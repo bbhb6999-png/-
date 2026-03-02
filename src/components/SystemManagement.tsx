@@ -1,0 +1,627 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Users, 
+  Lock, 
+  Server, 
+  Monitor, 
+  Smartphone, 
+  ShieldCheck, 
+  Plus, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Power, 
+  RotateCcw, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle,
+  ChevronRight,
+  ArrowLeft,
+  Cpu,
+  Database,
+  Activity,
+  Key,
+  BarChart3,
+  UserPlus,
+  Shield,
+  Layout,
+  HardDrive
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+interface SystemManagementProps {
+  activeSubTab: string;
+}
+
+type ViewState = 'list' | 'detail';
+
+export default function SystemManagement({ activeSubTab }: SystemManagementProps) {
+  const [view, setView] = useState<ViewState>('list');
+  const [selectedResource, setSelectedResource] = useState<any>(null);
+
+  useEffect(() => {
+    setView('list');
+  }, [activeSubTab]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'running':
+      case 'active':
+      case 'safe':
+      case 'enabled':
+        return <span className="flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 font-bold uppercase"><CheckCircle2 className="w-3 h-3 mr-1" /> 运行中</span>;
+      case 'stopped':
+      case 'inactive':
+      case 'disabled':
+      case 'offline':
+        return <span className="flex items-center text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-bold uppercase"><XCircle className="w-3 h-3 mr-1" /> 已停止</span>;
+      case 'error':
+      case 'risk':
+        return <span className="flex items-center text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 font-bold uppercase"><AlertTriangle className="w-3 h-3 mr-1" /> 异常</span>;
+      default:
+        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold uppercase">{status}</span>;
+    }
+  };
+
+  // --- 1. User Management ---
+  const renderUserMgmt = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)]">用户管理</h2>
+        <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all">
+          <UserPlus className="w-4 h-4 mr-2" /> 新增用户
+        </button>
+      </div>
+
+      <div className="card p-4 flex flex-wrap items-center gap-4">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+          <input type="text" placeholder="搜索用户名、姓名..." className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none" />
+        </div>
+        <select className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none">
+          <option>所有角色</option>
+          <option>管理员</option>
+          <option>评测员</option>
+          <option>标注员</option>
+        </select>
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 font-semibold">用户名</th>
+              <th className="px-6 py-4 font-semibold">姓名</th>
+              <th className="px-6 py-4 font-semibold">角色</th>
+              <th className="px-6 py-4 font-semibold">状态</th>
+              <th className="px-6 py-4 font-semibold">创建时间</th>
+              <th className="px-6 py-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {[
+              { user: 'admin', name: '系统管理员', role: '超级管理员', status: 'enabled', time: '2026-01-01 10:00' },
+              { user: 'eval_01', name: '张三', role: '评测员', status: 'enabled', time: '2026-02-15 14:20' },
+              { user: 'anno_02', name: '李四', role: '标注员', status: 'disabled', time: '2026-02-20 09:30' },
+            ].map((u, i) => (
+              <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{u.user}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{u.name}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{u.role}</td>
+                <td className="px-6 py-4">
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                    u.status === 'enabled' ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
+                  )}>
+                    {u.status === 'enabled' ? '启用' : '禁用'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{u.time}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end space-x-2">
+                    <button className="p-1.5 hover:bg-blue-50 text-blue-500 rounded"><Edit2 className="w-4 h-4" /></button>
+                    <button className="p-1.5 hover:bg-red-50 text-red-500 rounded"><Trash2 className="w-4 h-4" /></button>
+                    {u.status === 'enabled' ? (
+                      <button className="p-1.5 hover:bg-orange-50 text-orange-500 rounded" title="禁用"><XCircle className="w-4 h-4" /></button>
+                    ) : (
+                      <button className="p-1.5 hover:bg-emerald-50 text-emerald-500 rounded" title="启用"><CheckCircle2 className="w-4 h-4" /></button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // --- 2. Permission Management ---
+  const renderPermMgmt = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)]">权限管理</h2>
+        <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all">
+          <Plus className="w-4 h-4 mr-2" /> 新增角色
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <div className="card overflow-hidden">
+            <div className="px-6 py-4 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase">角色列表</h3>
+            </div>
+            <div className="divide-y divide-[var(--border-color)]">
+              {[
+                { name: '超级管理员', perms: 24, time: '2026-01-01' },
+                { name: '评测管理员', perms: 18, time: '2026-01-10' },
+                { name: '普通评测员', perms: 12, time: '2026-02-01' },
+                { name: '数据标注员', perms: 8, time: '2026-02-05' },
+              ].map((r, i) => (
+                <div key={i} className={cn(
+                  "px-6 py-4 flex items-center justify-between hover:bg-[var(--bg-primary)] cursor-pointer transition-colors",
+                  i === 1 && "bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-blue-600"
+                )}>
+                  <div>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{r.name}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] mt-1">{r.perms} 个权限 · {r.time}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button className="p-1 hover:bg-blue-50 text-blue-500 rounded"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button className="p-1 hover:bg-red-50 text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          <div className="card p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase flex items-center">
+                <Shield className="w-4 h-4 mr-2 text-blue-500" /> 权限配置: 评测管理员
+              </h3>
+              <button className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all">
+                保存权限
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                '评测管理', '数据标注', '接口评测', '资源评测', '数据处理', '结果校验', '系统管理'
+              ].map((module) => (
+                <div key={module} className="p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between group hover:border-blue-500/50 transition-all">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded bg-blue-50 text-blue-600 flex items-center justify-center mr-3">
+                      <Layout className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-medium text-[var(--text-primary)]">{module}</span>
+                  </div>
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" defaultChecked={module !== '系统管理'} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // --- 3. Virtualization Management ---
+  const renderVMgmt = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)]">虚拟化管理</h2>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-1.5">
+            <Key className="w-4 h-4 text-blue-500 mr-2" />
+            <span className="text-xs font-medium text-[var(--text-secondary)]">授权: </span>
+            <span className="text-xs font-bold text-blue-600 ml-1">2点 / 4物理CPU</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {[
+          { label: 'CPU使用率', value: 42, color: '#3b82f6', icon: Cpu },
+          { label: '内存使用率', value: 68, color: '#10b981', icon: Database },
+          { label: '虚拟机数量', value: 12, color: '#f59e0b', icon: Server },
+        ].map((stat, i) => (
+          <div key={i} className="card p-5 flex items-center">
+            <div className={cn("p-3 rounded-xl mr-4", i === 0 ? 'bg-blue-50 text-blue-600' : i === 1 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600')}>
+              <stat.icon className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">{stat.label}</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}{i < 2 ? '%' : ''}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 font-semibold">虚拟机名称</th>
+              <th className="px-6 py-4 font-semibold">CPU核心</th>
+              <th className="px-6 py-4 font-semibold">内存大小</th>
+              <th className="px-6 py-4 font-semibold">状态</th>
+              <th className="px-6 py-4 font-semibold">创建时间</th>
+              <th className="px-6 py-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {[
+              { name: 'VM-AI-EVAL-01', cpu: 8, mem: '16GB', status: 'running', time: '2026-02-01' },
+              { name: 'VM-DATA-PROC-02', cpu: 16, mem: '32GB', status: 'stopped', time: '2026-02-10' },
+              { name: 'VM-TEST-NODE-03', cpu: 4, mem: '8GB', status: 'running', time: '2026-02-15' },
+            ].map((vm, i) => (
+              <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">
+                  <button onClick={() => { setSelectedResource(vm); setView('detail'); }} className="hover:text-blue-500 hover:underline">
+                    {vm.name}
+                  </button>
+                </td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{vm.cpu} 核</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{vm.mem}</td>
+                <td className="px-6 py-4">{getStatusBadge(vm.status)}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{vm.time}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end space-x-2">
+                    {vm.status === 'running' ? (
+                      <button className="p-1.5 hover:bg-red-50 text-red-500 rounded" title="停止"><Power className="w-4 h-4" /></button>
+                    ) : (
+                      <button className="p-1.5 hover:bg-emerald-50 text-emerald-500 rounded" title="启动"><Power className="w-4 h-4" /></button>
+                    )}
+                    <button className="p-1.5 hover:bg-blue-50 text-blue-500 rounded" title="重启"><RotateCcw className="w-4 h-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // --- 4. Cloud Desktop Management ---
+  const renderCloudDesktop = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)]">云桌面管理</h2>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-1.5">
+            <Monitor className="w-4 h-4 text-emerald-500 mr-2" />
+            <span className="text-xs font-medium text-[var(--text-secondary)]">授权: </span>
+            <span className="text-xs font-bold text-emerald-600 ml-1">50点 (已用 32, 剩余 18)</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 font-semibold">桌面名称</th>
+              <th className="px-6 py-4 font-semibold">分配用户</th>
+              <th className="px-6 py-4 font-semibold">状态</th>
+              <th className="px-6 py-4 font-semibold">创建时间</th>
+              <th className="px-6 py-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {[
+              { name: 'DESKTOP-ZHAN-01', user: '张三', status: 'active', time: '2026-02-01' },
+              { name: 'DESKTOP-LI-02', user: '李四', status: 'inactive', time: '2026-02-10' },
+              { name: 'DESKTOP-WANG-03', user: '王五', status: 'active', time: '2026-02-15' },
+            ].map((d, i) => (
+              <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">
+                  <button onClick={() => { setSelectedResource(d); setView('detail'); }} className="hover:text-blue-500 hover:underline">
+                    {d.name}
+                  </button>
+                </td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{d.user}</td>
+                <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{d.time}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end space-x-2">
+                    <button className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold hover:bg-blue-100">分配</button>
+                    <button className="px-3 py-1 bg-red-50 text-red-600 rounded text-xs font-bold hover:bg-red-100">回收</button>
+                    <button className="p-1.5 hover:bg-slate-100 text-slate-500 rounded"><Power className="w-4 h-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // --- 5. Terminal Management ---
+  const renderTerminal = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)]">终端管理</h2>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-1.5">
+            <Smartphone className="w-4 h-4 text-orange-500 mr-2" />
+            <span className="text-xs font-medium text-[var(--text-secondary)]">授权: </span>
+            <span className="text-xs font-bold text-orange-600 ml-1">50点 (已用 45, 剩余 5)</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 font-semibold">终端名称</th>
+              <th className="px-6 py-4 font-semibold">IP地址</th>
+              <th className="px-6 py-4 font-semibold">安全状态</th>
+              <th className="px-6 py-4 font-semibold">最后在线时间</th>
+              <th className="px-6 py-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {[
+              { name: 'TERMINAL-P01', ip: '192.168.1.101', status: 'safe', time: '2026-03-01 16:00' },
+              { name: 'TERMINAL-P02', ip: '192.168.1.102', status: 'risk', time: '2026-03-01 15:45' },
+              { name: 'TERMINAL-P03', ip: '192.168.1.103', status: 'offline', time: '2026-02-28 10:20' },
+            ].map((t, i) => (
+              <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">
+                  <button onClick={() => { setSelectedResource(t); setView('detail'); }} className="hover:text-blue-500 hover:underline">
+                    {t.name}
+                  </button>
+                </td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{t.ip}</td>
+                <td className="px-6 py-4">{getStatusBadge(t.status)}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{t.time}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end space-x-2">
+                    <button className="p-1.5 hover:bg-blue-50 text-blue-500 rounded" title="查看"><Search className="w-4 h-4" /></button>
+                    {t.status !== 'offline' ? (
+                      <button className="p-1.5 hover:bg-red-50 text-red-500 rounded" title="禁用"><XCircle className="w-4 h-4" /></button>
+                    ) : (
+                      <button className="p-1.5 hover:bg-emerald-50 text-emerald-500 rounded" title="启用"><CheckCircle2 className="w-4 h-4" /></button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // --- 6. License Management ---
+  const renderLicenseMgmt = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-[var(--text-primary)]">授权管理</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { type: '虚拟化授权', total: 2, used: 1, unit: '点', icon: Server, color: 'blue' },
+          { type: '云桌面授权', total: 50, used: 32, unit: '点', icon: Monitor, color: 'emerald' },
+          { type: '终端授权', total: 50, used: 45, unit: '点', icon: Smartphone, color: 'orange' },
+        ].map((l, i) => (
+          <div key={i} className="card p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className={cn("p-3 rounded-xl", `bg-${l.color}-50 text-${l.color}-600`)}>
+                <l.icon className="w-6 h-6" />
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">授权状态</p>
+                <p className="text-xs font-bold text-emerald-500">正常</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-[var(--text-primary)]">{l.type}</h4>
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-secondary)]">使用进度</span>
+                  <span className="font-bold text-[var(--text-primary)]">{Math.round((l.used / l.total) * 100)}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full", `bg-${l.color}-500`)} style={{ width: `${(l.used / l.total) * 100}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] text-[var(--text-secondary)] pt-1">
+                  <span>已用: {l.used} {l.unit}</span>
+                  <span>总计: {l.total} {l.unit}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 font-semibold">授权类型</th>
+              <th className="px-6 py-4 font-semibold">授权数量</th>
+              <th className="px-6 py-4 font-semibold">已使用</th>
+              <th className="px-6 py-4 font-semibold">剩余</th>
+              <th className="px-6 py-4 text-right">有效期至</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {[
+              { type: '虚拟化授权', total: 2, used: 1, remain: 1, expiry: '2027-12-31' },
+              { type: '物理CPU授权', total: 4, used: 2, remain: 2, expiry: '2027-12-31' },
+              { type: '云桌面授权', total: 50, used: 32, remain: 18, expiry: '2026-12-31' },
+              { type: '终端授权', total: 50, used: 45, remain: 5, expiry: '2026-12-31' },
+            ].map((l, i) => (
+              <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{l.type}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{l.total}</td>
+                <td className="px-6 py-4 text-sm text-blue-600 font-bold">{l.used}</td>
+                <td className="px-6 py-4 text-sm text-emerald-600 font-bold">{l.remain}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{l.expiry}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // --- 7. Resource Details ---
+  const renderResourceDetail = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <button onClick={() => setView('list')} className="p-2 hover:bg-[var(--bg-secondary)] rounded-lg text-[var(--text-secondary)]">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">资源详情</h2>
+        </div>
+        <div className="flex items-center space-x-3">
+          {getStatusBadge(selectedResource?.status || 'running')}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-6">
+          <div className="card p-6 space-y-6">
+            <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase flex items-center">
+              <Activity className="w-4 h-4 mr-2 text-blue-500" /> 资源信息
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">资源名称</p>
+                <p className="text-sm font-bold text-[var(--text-primary)]">{selectedResource?.name || 'VM-AI-EVAL-01'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">资源类型</p>
+                <p className="text-sm text-[var(--text-primary)]">
+                  {activeSubTab === 'v-mgmt' ? '虚拟机' : activeSubTab === 'cloud-desktop' ? '云桌面' : '终端'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">资源状态</p>
+                <p className="text-sm text-[var(--text-primary)]">正常运行</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6 space-y-6">
+            <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase flex items-center">
+              <BarChart3 className="w-4 h-4 mr-2 text-emerald-500" /> 实时负载
+            </h3>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-secondary)]">CPU 使用率</span>
+                  <span className="font-bold text-blue-500">42%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: '42%' }} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-secondary)]">内存 使用率</span>
+                  <span className="font-bold text-emerald-500">68%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: '68%' }} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-secondary)]">磁盘 使用率</span>
+                  <span className="font-bold text-orange-500">25%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-orange-500 rounded-full" style={{ width: '25%' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          <div className="card p-6 h-full flex flex-col">
+            <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase mb-6">负载趋势 (24h)</h3>
+            <div className="flex-1 min-h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { time: '00:00', cpu: 20, mem: 40 },
+                  { time: '04:00', cpu: 15, mem: 35 },
+                  { time: '08:00', cpu: 45, mem: 60 },
+                  { time: '12:00', cpu: 80, mem: 75 },
+                  { time: '16:00', cpu: 65, mem: 70 },
+                  { time: '20:00', cpu: 30, mem: 50 },
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="cpu" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="mem" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    if (view === 'detail') return renderResourceDetail();
+
+    switch (activeSubTab) {
+      case 'user-mgmt': return renderUserMgmt();
+      case 'perm-mgmt': return renderPermMgmt();
+      case 'v-mgmt': return renderVMgmt();
+      case 'cloud-desktop': return renderCloudDesktop();
+      case 'terminal': return renderTerminal();
+      case 'license-mgmt': return renderLicenseMgmt();
+      default: return renderUserMgmt();
+    }
+  };
+
+  return (
+    <div className="h-full">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`${activeSubTab}-${view}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="h-full"
+        >
+          {renderContent()}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
