@@ -83,6 +83,25 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
   const [realTimeData, setRealTimeData] = useState(generateRealTimeData(30));
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // Filter States
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyNodeFilter, setHistoryNodeFilter] = useState('所有节点');
+
+  // Mock Data
+  const HISTORY_DATA = [
+    { name: '人脸识别实时分析任务 #001', node: '服务器', cpu: '32%', mem: '45%', gpu: '28%', duration: '02:45:12', frameDrop: '0.42%', time: '2026-03-01 10:00' },
+    { name: '车辆特征提取任务 #042', node: '本机', cpu: '18%', mem: '32%', gpu: '12%', duration: '01:12:05', frameDrop: '0.15%', time: '2026-03-01 09:30' },
+    { name: '视频结构化处理任务 #108', node: '服务器', cpu: '54%', mem: '68%', gpu: '72%', duration: '05:20:44', frameDrop: '1.24%', time: '2026-02-28 14:20' },
+  ];
+
+  const filteredHistory = useMemo(() => {
+    return HISTORY_DATA.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(historySearch.toLowerCase());
+      const matchesNode = historyNodeFilter === '所有节点' || item.node === historyNodeFilter;
+      return matchesSearch && matchesNode;
+    });
+  }, [historySearch, historyNodeFilter]);
+
   // Simulate real-time updates
   useEffect(() => {
     if (isPaused || !autoRefresh || activeSubTab !== 'res-monitor') return;
@@ -375,7 +394,13 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
       <div className="card p-4 flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
-          <input type="text" placeholder="任务名称..." className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none" />
+          <input 
+            type="text" 
+            placeholder="任务名称..." 
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none" 
+          />
         </div>
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-[var(--text-secondary)]" />
@@ -385,10 +410,15 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
             <option>最近30天</option>
           </select>
         </div>
-        <select className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none">
-          <option>节点</option>
+        <select 
+          value={historyNodeFilter}
+          onChange={(e) => setHistoryNodeFilter(e.target.value)}
+          className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none text-[var(--text-primary)]"
+        >
+          <option>所有节点</option>
           <option>本机</option>
           <option>服务器</option>
+          <option>虚拟机</option>
         </select>
         <button className="p-2 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
           <Filter className="w-4 h-4" />
@@ -412,11 +442,7 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {[
-              { name: '人脸识别实时分析任务 #001', node: '服务器', cpu: '32%', mem: '45%', gpu: '28%', duration: '02:45:12', frameDrop: '0.42%', time: '2026-03-01 10:00' },
-              { name: '车辆特征提取任务 #042', node: '本机', cpu: '18%', mem: '32%', gpu: '12%', duration: '01:12:05', frameDrop: '0.15%', time: '2026-03-01 09:30' },
-              { name: '视频结构化处理任务 #108', node: '服务器', cpu: '54%', mem: '68%', gpu: '72%', duration: '05:20:44', frameDrop: '1.24%', time: '2026-02-28 14:20' },
-            ].map((item, i) => (
+            {filteredHistory.length > 0 ? filteredHistory.map((item, i) => (
               <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors group">
                 <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{item.name}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{item.node}</td>
@@ -437,7 +463,13 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
                   </div>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={9} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  未找到匹配的历史记录
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

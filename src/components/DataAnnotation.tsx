@@ -59,11 +59,64 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [view, setView] = useState<AnnotationView>('list');
   const [selectedItem, setSelectedItem] = useState<any>(null);
   
+  // Filter States
+  const [imgSearch, setImgSearch] = useState('');
+  const [imgStatusFilter, setImgStatusFilter] = useState('所有状态');
+  
+  const [vidSearch, setVidSearch] = useState('');
+  const [vidStatusFilter, setVidStatusFilter] = useState('所有状态');
+
+  // Mock Data - Changed to Tasks (Datasets)
+  const [imageTasks, setImageTasks] = useState([
+    { id: 'IMG-TASK-001', name: '人脸识别评测集', total: 500, completed: 420, status: 'annotating', time: '2026-03-01 10:00' },
+    { id: 'IMG-TASK-002', name: '车辆特征库', total: 1000, completed: 1000, status: 'completed', time: '2026-03-01 10:05' },
+    { id: 'IMG-TASK-003', name: '行人属性标注', total: 200, completed: 0, status: 'pending', time: '2026-03-01 10:10' },
+  ]);
+
+  const [videoTasks, setVideoTasks] = useState([
+    { id: 'VID-TASK-001', name: '交通违法行为识别', total: 50, completed: 12, status: 'annotating', time: '2026-03-01 09:00' },
+    { id: 'VID-TASK-002', name: '安防监控异常检测', total: 20, completed: 20, status: 'completed', time: '2026-03-01 11:15' },
+  ]);
+
+  const [taskModalConfig, setTaskModalConfig] = useState<{ open: boolean; type?: 'image' | 'video' }>({ open: false });
+
+  const filteredImageTasks = React.useMemo(() => {
+    return imageTasks.filter(task => {
+      const matchesSearch = task.name.toLowerCase().includes(imgSearch.toLowerCase()) || 
+                           task.id.toLowerCase().includes(imgSearch.toLowerCase());
+      const statusMap: Record<string, string> = {
+        '未开始': 'pending',
+        '标注中': 'annotating',
+        '已完成': 'completed'
+      };
+      const matchesStatus = imgStatusFilter === '所有状态' || task.status === statusMap[imgStatusFilter];
+      return matchesSearch && matchesStatus;
+    });
+  }, [imageTasks, imgSearch, imgStatusFilter]);
+
+  const filteredVideoTasks = React.useMemo(() => {
+    return videoTasks.filter(task => {
+      const matchesSearch = task.name.toLowerCase().includes(vidSearch.toLowerCase()) ||
+                           task.id.toLowerCase().includes(vidSearch.toLowerCase());
+      const statusMap: Record<string, string> = {
+        '未开始': 'pending',
+        '标注中': 'annotating',
+        '已完成': 'completed'
+      };
+      const matchesStatus = vidStatusFilter === '所有状态' || task.status === statusMap[vidStatusFilter];
+      return matchesSearch && matchesStatus;
+    });
+  }, [videoTasks, vidSearch, vidStatusFilter]);
+  
   // Editor State
-  const [rects, setRects] = useState<Rect[]>([]);
+  const [rects, setRects] = useState<Rect[]>([
+    { id: '1', x: 100, y: 150, width: 200, height: 150, label: '人脸', color: '#3b82f6' },
+    { id: '2', x: 400, y: 300, width: 120, height: 80, label: '车辆', color: '#10b981' },
+  ]);
   const [selectedRectId, setSelectedRectId] = useState<string | null>(null);
   const [tool, setTool] = useState<'select' | 'rect'>('select');
   const [zoom, setZoom] = useState(100);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [labels, setLabels] = useState([
     { name: '人脸', color: '#3b82f6' },
     { name: '车辆', color: '#10b981' },
@@ -71,6 +124,26 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     { name: '行人', color: '#ef4444' },
   ]);
   const [activeLabel, setActiveLabel] = useState('人脸');
+
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (tool === 'rect') {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / (zoom / 100);
+      const y = (e.clientY - rect.top) / (zoom / 100);
+      
+      const newRect: Rect = {
+        id: Math.random().toString(36).substr(2, 9),
+        x: x - 50,
+        y: y - 50,
+        width: 100,
+        height: 100,
+        label: activeLabel,
+        color: labels.find(l => l.name === activeLabel)?.color || '#3b82f6'
+      };
+      setRects([...rects, newRect]);
+      setTool('select');
+    }
+  };
 
   // Video State
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -96,13 +169,16 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">图片标注</h2>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">数据标注 / 图片标注</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">数据标注 / 图片标注任务列表</p>
         </div>
         <div className="flex items-center space-x-2">
           <button className="flex items-center px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)]">
-            <Upload className="w-4 h-4 mr-2" /> 导入图片
+            <Upload className="w-4 h-4 mr-2" /> 导入数据集
           </button>
-          <button className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20">
+          <button 
+            onClick={() => setTaskModalConfig({ open: true, type: 'image' })}
+            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20"
+          >
             <Plus className="w-4 h-4 mr-2" /> 新建标注任务
           </button>
         </div>
@@ -111,11 +187,21 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       <div className="card p-4 flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
-          <input type="text" placeholder="搜索图片名称、任务..." className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          <input 
+            type="text" 
+            placeholder="搜索任务名称、ID..." 
+            value={imgSearch}
+            onChange={(e) => setImgSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
+          />
         </div>
-        <select className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+        <select 
+          value={imgStatusFilter}
+          onChange={(e) => setImgStatusFilter(e.target.value)}
+          className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-[var(--text-primary)]"
+        >
           <option>所有状态</option>
-          <option>未标注</option>
+          <option>未开始</option>
           <option>标注中</option>
           <option>已完成</option>
         </select>
@@ -125,42 +211,51 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         <table className="w-full text-left">
           <thead>
             <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
-              <th className="px-6 py-4 font-semibold">图片预览</th>
-              <th className="px-6 py-4 font-semibold">图片名称</th>
-              <th className="px-6 py-4 font-semibold">所属任务</th>
-              <th className="px-6 py-4 font-semibold">标注状态</th>
-              <th className="px-6 py-4 font-semibold">标注数量</th>
+              <th className="px-6 py-4 font-semibold">任务名称</th>
+              <th className="px-6 py-4 font-semibold">任务ID</th>
+              <th className="px-6 py-4 font-semibold">数据总量</th>
+              <th className="px-6 py-4 font-semibold">已完成</th>
+              <th className="px-6 py-4 font-semibold">进度</th>
+              <th className="px-6 py-4 font-semibold">状态</th>
               <th className="px-6 py-4 font-semibold">创建时间</th>
               <th className="px-6 py-4 text-right">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {[
-              { id: 1, name: 'IMG_20260301_001.jpg', task: '人脸识别评测集', status: 'completed', count: 12, time: '2026-03-01 10:00' },
-              { id: 2, name: 'IMG_20260301_002.jpg', task: '人脸识别评测集', status: 'annotating', count: 5, time: '2026-03-01 10:05' },
-              { id: 3, name: 'IMG_20260301_003.jpg', task: '车辆特征库', status: 'pending', count: 0, time: '2026-03-01 10:10' },
-            ].map((img) => (
-              <tr key={img.id} className="hover:bg-[var(--bg-primary)] transition-colors group">
+            {filteredImageTasks.length > 0 ? filteredImageTasks.map((task) => (
+              <tr key={task.id} className="hover:bg-[var(--bg-primary)] transition-colors group">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{task.name}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{task.id}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.total}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.completed}</td>
                 <td className="px-6 py-4">
-                  <div className="w-12 h-12 rounded bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                    <img src={`https://picsum.photos/seed/${img.id}/100/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="w-24">
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500" 
+                        style={{ width: `${(task.completed / task.total) * 100}%` }} 
+                      />
+                    </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{img.name}</td>
-                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{img.task}</td>
-                <td className="px-6 py-4">{getStatusBadge(img.status)}</td>
-                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{img.count}</td>
-                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{img.time}</td>
+                <td className="px-6 py-4">{getStatusBadge(task.status)}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
                   <button 
-                    onClick={() => { setSelectedItem(img); setView('imageEditor'); }}
+                    onClick={() => { setSelectedItem(task); setView('imageEditor'); }}
                     className="text-blue-500 hover:text-blue-600 text-sm font-medium"
                   >
                     开始标注
                   </button>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={8} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  未找到匹配的标注任务
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -172,55 +267,93 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">视频标注</h2>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">数据标注 / 视频标注</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">数据标注 / 视频标注任务列表</p>
         </div>
         <div className="flex items-center space-x-2">
           <button className="flex items-center px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)]">
-            <Upload className="w-4 h-4 mr-2" /> 导入视频
+            <Upload className="w-4 h-4 mr-2" /> 导入数据集
           </button>
-          <button className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20">
+          <button 
+            onClick={() => setTaskModalConfig({ open: true, type: 'video' })}
+            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20"
+          >
             <Plus className="w-4 h-4 mr-2" /> 新建标注任务
           </button>
         </div>
+      </div>
+
+      <div className="card p-4 flex flex-wrap items-center gap-4 mb-6">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+          <input 
+            type="text" 
+            placeholder="搜索任务名称、ID..." 
+            value={vidSearch}
+            onChange={(e) => setVidSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
+          />
+        </div>
+        <select 
+          value={vidStatusFilter}
+          onChange={(e) => setVidStatusFilter(e.target.value)}
+          className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-[var(--text-primary)]"
+        >
+          <option>所有状态</option>
+          <option>未开始</option>
+          <option>标注中</option>
+          <option>已完成</option>
+        </select>
       </div>
 
       <div className="card overflow-hidden">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
-              <th className="px-6 py-4 font-semibold">视频预览</th>
-              <th className="px-6 py-4 font-semibold">视频名称</th>
-              <th className="px-6 py-4 font-semibold">时长</th>
-              <th className="px-6 py-4 font-semibold">标注状态</th>
+              <th className="px-6 py-4 font-semibold">任务名称</th>
+              <th className="px-6 py-4 font-semibold">任务ID</th>
+              <th className="px-6 py-4 font-semibold">视频总量</th>
+              <th className="px-6 py-4 font-semibold">已完成</th>
+              <th className="px-6 py-4 font-semibold">进度</th>
+              <th className="px-6 py-4 font-semibold">状态</th>
               <th className="px-6 py-4 font-semibold">创建时间</th>
               <th className="px-6 py-4 text-right">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {[
-              { id: 1, name: 'TRAFFIC_MONITOR_001.mp4', duration: '05:20', status: 'completed', time: '2026-03-01 09:00' },
-              { id: 2, name: 'STREET_VIEW_042.mp4', duration: '02:45', status: 'annotating', time: '2026-03-01 11:15' },
-            ].map((vid) => (
-              <tr key={vid.id} className="hover:bg-[var(--bg-primary)] transition-colors">
+            {filteredVideoTasks.length > 0 ? filteredVideoTasks.map((task) => (
+              <tr key={task.id} className="hover:bg-[var(--bg-primary)] transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{task.name}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{task.id}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.total}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.completed}</td>
                 <td className="px-6 py-4">
-                  <div className="w-16 h-10 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-                    <VideoIcon className="w-4 h-4 text-slate-400" />
+                  <div className="w-24">
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500" 
+                        style={{ width: `${(task.completed / task.total) * 100}%` }} 
+                      />
+                    </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{vid.name}</td>
-                <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{vid.duration}</td>
-                <td className="px-6 py-4">{getStatusBadge(vid.status)}</td>
-                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{vid.time}</td>
+                <td className="px-6 py-4">{getStatusBadge(task.status)}</td>
+                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
                   <button 
-                    onClick={() => { setSelectedItem(vid); setView('videoEditor'); }}
+                    onClick={() => { setSelectedItem(task); setView('videoEditor'); }}
                     className="text-blue-500 hover:text-blue-600 text-sm font-medium"
                   >
                     进入标注
                   </button>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={8} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  未找到匹配的标注任务
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -306,6 +439,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
+          <div className="flex items-center px-3 py-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] mr-4">
+            <span className="text-xs font-bold text-blue-500 mr-2">任务:</span>
+            <span className="text-xs font-medium truncate max-w-[120px]">{selectedItem?.name}</span>
+          </div>
           <button 
             onClick={() => setTool('select')}
             className={cn("p-2 rounded-lg transition-colors", tool === 'select' ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30" : "hover:bg-[var(--bg-primary)] text-[var(--text-secondary)]")}
@@ -318,7 +455,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           >
             <Square className="w-5 h-5" />
           </button>
-          <button className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-red-500">
+          <button 
+            onClick={() => setRects([])}
+            className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-red-500"
+          >
             <Trash2 className="w-5 h-5" />
           </button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
@@ -354,21 +494,25 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         <div className="w-64 border-r border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
           <div className="p-4 border-b border-[var(--border-color)]">
             <h3 className="text-sm font-bold flex items-center">
-              <ImageIcon className="w-4 h-4 mr-2 text-blue-500" /> 图片列表 (12)
+              <ImageIcon className="w-4 h-4 mr-2 text-blue-500" /> 待标注图片 (12)
             </h3>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className={cn(
-                "p-2 rounded-lg border transition-all cursor-pointer group",
-                i === 1 ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10" : "border-transparent hover:bg-[var(--bg-primary)]"
-              )}>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i, idx) => (
+              <div 
+                key={i} 
+                onClick={() => setCurrentImageIndex(idx)}
+                className={cn(
+                  "p-2 rounded-lg border transition-all cursor-pointer group",
+                  currentImageIndex === idx ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10" : "border-transparent hover:bg-[var(--bg-primary)]"
+                )}
+              >
                 <div className="aspect-video rounded bg-slate-200 dark:bg-slate-800 mb-2 overflow-hidden">
-                  <img src={`https://picsum.photos/seed/${i + 10}/200/120`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={`https://picsum.photos/seed/${idx + 100}/200/120`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs truncate font-medium">IMG_00{i}.jpg</span>
-                  {i < 3 ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
+                  {idx < 2 ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
                 </div>
               </div>
             ))}
@@ -378,31 +522,80 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         {/* Center: Canvas */}
         <div className="flex-1 bg-slate-100 dark:bg-slate-950 relative overflow-hidden flex items-center justify-center">
           <div 
-            className="relative bg-white shadow-2xl transition-transform duration-200"
+            onClick={handleCanvasClick}
+            className={cn(
+              "relative bg-white shadow-2xl transition-transform duration-200",
+              tool === 'rect' ? 'cursor-crosshair' : 'cursor-default'
+            )}
             style={{ 
               width: '800px', 
               height: '600px', 
               transform: `scale(${zoom / 100})`,
-              backgroundImage: 'url(https://picsum.photos/seed/annot/800/600)',
+              backgroundImage: `url(https://picsum.photos/seed/${currentImageIndex + 100}/800/600)`,
               backgroundSize: 'cover'
             }}
           >
-            {/* Simulated Rects */}
-            <div className="absolute inset-0 cursor-crosshair">
-              <div className="absolute border-2 border-blue-500 bg-blue-500/10" style={{ left: '100px', top: '150px', width: '200px', height: '150px' }}>
-                <span className="absolute -top-6 left-0 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded">人脸 0.98</span>
-              </div>
-              <div className="absolute border-2 border-emerald-500 bg-emerald-500/10" style={{ left: '400px', top: '300px', width: '120px', height: '80px' }}>
-                <span className="absolute -top-6 left-0 bg-emerald-500 text-white text-[10px] px-1.5 py-0.5 rounded">车辆</span>
-              </div>
+            {/* Rects */}
+            <div className="absolute inset-0">
+              {rects.map((rect) => (
+                <div 
+                  key={rect.id}
+                  onClick={(e) => { e.stopPropagation(); setSelectedRectId(rect.id); }}
+                  className={cn(
+                    "absolute border-2 transition-all",
+                    selectedRectId === rect.id ? "ring-2 ring-white ring-offset-2 ring-offset-blue-500" : ""
+                  )}
+                  style={{ 
+                    left: `${rect.x}px`, 
+                    top: `${rect.y}px`, 
+                    width: `${rect.width}px`, 
+                    height: `${rect.height}px`,
+                    borderColor: rect.color,
+                    backgroundColor: `${rect.color}20`
+                  }}
+                >
+                  <span 
+                    className="absolute -top-6 left-0 text-white text-[10px] px-1.5 py-0.5 rounded"
+                    style={{ backgroundColor: rect.color }}
+                  >
+                    {rect.label}
+                  </span>
+                  {selectedRectId === rect.id && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRects(rects.filter(r => r.id !== rect.id));
+                        setSelectedRectId(null);
+                      }}
+                      className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Canvas Controls Overlay */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-2 bg-[var(--bg-secondary)]/80 backdrop-blur-md border border-[var(--border-color)] rounded-full px-4 py-2 shadow-xl">
-            <button className="p-1.5 hover:bg-white rounded-full"><Settings2 className="w-4 h-4" /></button>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4 bg-[var(--bg-secondary)]/80 backdrop-blur-md border border-[var(--border-color)] rounded-full px-6 py-2 shadow-xl">
+            <button 
+              disabled={currentImageIndex === 0}
+              onClick={() => setCurrentImageIndex(prev => prev - 1)}
+              className="p-1.5 hover:bg-white rounded-full disabled:opacity-30"
+            >
+              <SkipBack className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold">{currentImageIndex + 1} / 12</span>
+            <button 
+              disabled={currentImageIndex === 11}
+              onClick={() => setCurrentImageIndex(prev => prev + 1)}
+              className="p-1.5 hover:bg-white rounded-full disabled:opacity-30"
+            >
+              <SkipForward className="w-4 h-4" />
+            </button>
             <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
-            <button className="p-1.5 hover:bg-white rounded-full"><History className="w-4 h-4" /></button>
+            <button className="p-1.5 hover:bg-white rounded-full"><Settings2 className="w-4 h-4" /></button>
             <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
             <span className="text-xs font-mono">x: 422, y: 156</span>
           </div>
@@ -441,44 +634,49 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             </div>
 
             {/* Selected Rect Info */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase">当前标注坐标</span>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-[var(--text-secondary)]">X 坐标</label>
-                  <input type="number" defaultValue={100} className="w-full px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-[var(--text-secondary)]">Y 坐标</label>
-                  <input type="number" defaultValue={150} className="w-full px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-[var(--text-secondary)]">宽度</label>
-                  <input type="number" defaultValue={200} className="w-full px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-[var(--text-secondary)]">高度</label>
-                  <input type="number" defaultValue={150} className="w-full px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-xs" />
+            {selectedRectId && (
+              <div className="space-y-3 p-3 bg-[var(--bg-primary)] rounded-lg border border-blue-500/20">
+                <span className="text-xs font-bold text-blue-500 uppercase">当前标注坐标</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[var(--text-secondary)]">X 坐标</label>
+                    <input type="number" value={Math.round(rects.find(r => r.id === selectedRectId)?.x || 0)} className="w-full px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-xs" readOnly />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[var(--text-secondary)]">Y 坐标</label>
+                    <input type="number" value={Math.round(rects.find(r => r.id === selectedRectId)?.y || 0)} className="w-full px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-xs" readOnly />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[var(--text-secondary)]">宽度</label>
+                    <input type="number" value={Math.round(rects.find(r => r.id === selectedRectId)?.width || 0)} className="w-full px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-xs" readOnly />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[var(--text-secondary)]">高度</label>
+                    <input type="number" value={Math.round(rects.find(r => r.id === selectedRectId)?.height || 0)} className="w-full px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-xs" readOnly />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Annotation List */}
             <div className="space-y-3">
-              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase">已标注列表 (2)</span>
+              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase">已标注列表 ({rects.length})</span>
               <div className="space-y-2">
-                {[
-                  { id: '1', label: '人脸', color: '#3b82f6' },
-                  { id: '2', label: '车辆', color: '#10b981' },
-                ].map((r) => (
-                  <div key={r.id} className="flex items-center justify-between p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)] group">
+                {rects.map((r) => (
+                  <div 
+                    key={r.id} 
+                    onClick={() => setSelectedRectId(r.id)}
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded border transition-all cursor-pointer group",
+                      selectedRectId === r.id ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10" : "bg-[var(--bg-primary)] border-[var(--border-color)]"
+                    )}
+                  >
                     <div className="flex items-center">
                       <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: r.color }} />
-                      <span className="text-xs font-medium">{r.label}_{r.id}</span>
+                      <span className="text-xs font-medium">{r.label}_{r.id.slice(0, 4)}</span>
                     </div>
                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-1 hover:text-blue-500"><Settings2 className="w-3 h-3" /></button>
-                      <button className="p-1 hover:text-red-500"><X className="w-3 h-3" /></button>
+                      <button className="p-1 hover:text-red-500" onClick={(e) => { e.stopPropagation(); setRects(rects.filter(item => item.id !== r.id)); }}><X className="w-3 h-3" /></button>
                     </div>
                   </div>
                 ))}
@@ -499,6 +697,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
+          <div className="flex items-center px-3 py-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] mr-4">
+            <span className="text-xs font-bold text-blue-500 mr-2">任务:</span>
+            <span className="text-xs font-medium truncate max-w-[120px]">{selectedItem?.name}</span>
+          </div>
           <button className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"><MousePointer2 className="w-5 h-5" /></button>
           <button className="p-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 rounded-lg"><Square className="w-5 h-5" /></button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
@@ -510,6 +712,34 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
+        {/* Left: Video List */}
+        <div className="w-64 border-r border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
+          <div className="p-4 border-b border-[var(--border-color)]">
+            <h3 className="text-sm font-bold flex items-center">
+              <VideoIcon className="w-4 h-4 mr-2 text-blue-500" /> 视频列表 (5)
+            </h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            {[1, 2, 3, 4, 5].map((i, idx) => (
+              <div 
+                key={i} 
+                className={cn(
+                  "p-2 rounded-lg border transition-all cursor-pointer group",
+                  idx === 0 ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10" : "border-transparent hover:bg-[var(--bg-primary)]"
+                )}
+              >
+                <div className="aspect-video rounded bg-slate-200 dark:bg-slate-800 mb-2 flex items-center justify-center">
+                  <VideoIcon className="w-6 h-6 text-slate-400" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs truncate font-medium">VIDEO_00{i}.mp4</span>
+                  {idx === 0 ? <Clock className="w-3 h-3 text-blue-500" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Center: Player & Canvas */}
         <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-950">
           <div className="flex-1 relative flex items-center justify-center p-8">
@@ -663,18 +893,114 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     </div>
   );
 
+  const TaskModal = ({ config, onClose, onAdd }: { config: any; onClose: () => void; onAdd: (task: any) => void }) => {
+    const [name, setName] = useState('');
+    const [dataset, setDataset] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onAdd({
+        id: `${config.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`,
+        name,
+        total: 100,
+        completed: 0,
+        status: 'pending',
+        time: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5)
+      });
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+        >
+          <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
+            <h3 className="text-lg font-bold">新建{config.type === 'image' ? '图片' : '视频'}标注任务</h3>
+            <button onClick={onClose} className="p-1 hover:bg-[var(--bg-primary)] rounded-lg transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">任务名称</label>
+              <input 
+                required
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="请输入标注任务名称"
+                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">源数据集</label>
+              <select 
+                required
+                value={dataset}
+                onChange={(e) => setDataset(e.target.value)}
+                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="">请选择数据集</option>
+                <option value="ds1">标准人脸库-V1 (5000条)</option>
+                <option value="ds2">城市交通监控-夜间 (1200条)</option>
+                <option value="ds3">违停车辆抓拍集 (800条)</option>
+              </select>
+            </div>
+            <div className="pt-4 flex justify-end space-x-3">
+              <button 
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-primary)]"
+              >
+                取消
+              </button>
+              <button 
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+              >
+                创建任务
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     if (view === 'imageEditor') return renderImageEditor();
     if (view === 'videoEditor') return renderVideoEditor();
     if (view === 'export') return renderExport();
     if (view === 'datasetMgmt') return renderDatasetMgmt();
 
-    switch (activeSubTab) {
-      case 'img-anno': return renderImageAnnotationList();
-      case 'video-anno': return renderVideoAnnotationList();
-      case 'export-anno': return renderExport();
-      default: return renderAnnotationManagement();
-    }
+    return (
+      <>
+        {taskModalConfig.open && (
+          <TaskModal 
+            config={taskModalConfig}
+            onClose={() => setTaskModalConfig({ open: false })}
+            onAdd={(task) => {
+              if (taskModalConfig.type === 'image') {
+                setImageTasks([task, ...imageTasks]);
+              } else {
+                setVideoTasks([task, ...videoTasks]);
+              }
+            }}
+          />
+        )}
+        {(() => {
+          switch (activeSubTab) {
+            case 'img-anno': return renderImageAnnotationList();
+            case 'video-anno': return renderVideoAnnotationList();
+            case 'export-anno': return renderExport();
+            default: return renderAnnotationManagement();
+          }
+        })()}
+      </>
+    );
   };
 
   return (

@@ -57,6 +57,26 @@ export default function SystemManagement({ activeSubTab }: SystemManagementProps
   const [view, setView] = useState<ViewState>('list');
   const [selectedResource, setSelectedResource] = useState<any>(null);
 
+  // Filter States
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('所有角色');
+
+  // Mock Data
+  const USERS = [
+    { user: 'admin', name: '系统管理员', role: '超级管理员', status: 'enabled', time: '2026-01-01 10:00' },
+    { user: 'eval_01', name: '张三', role: '评测员', status: 'enabled', time: '2026-02-15 14:20' },
+    { user: 'anno_02', name: '李四', role: '标注员', status: 'disabled', time: '2026-02-20 09:30' },
+  ];
+
+  const filteredUsers = React.useMemo(() => {
+    return USERS.filter(u => {
+      const matchesSearch = u.user.toLowerCase().includes(userSearch.toLowerCase()) || 
+                           u.name.toLowerCase().includes(userSearch.toLowerCase());
+      const matchesRole = userRoleFilter === '所有角色' || u.role === userRoleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [userSearch, userRoleFilter]);
+
   useEffect(() => {
     setView('list');
   }, [activeSubTab]);
@@ -94,11 +114,21 @@ export default function SystemManagement({ activeSubTab }: SystemManagementProps
       <div className="card p-4 flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
-          <input type="text" placeholder="搜索用户名、姓名..." className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none" />
+          <input 
+            type="text" 
+            placeholder="搜索用户名、姓名..." 
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none" 
+          />
         </div>
-        <select className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none">
+        <select 
+          value={userRoleFilter}
+          onChange={(e) => setUserRoleFilter(e.target.value)}
+          className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none text-[var(--text-primary)]"
+        >
           <option>所有角色</option>
-          <option>管理员</option>
+          <option>超级管理员</option>
           <option>评测员</option>
           <option>标注员</option>
         </select>
@@ -117,11 +147,7 @@ export default function SystemManagement({ activeSubTab }: SystemManagementProps
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {[
-              { user: 'admin', name: '系统管理员', role: '超级管理员', status: 'enabled', time: '2026-01-01 10:00' },
-              { user: 'eval_01', name: '张三', role: '评测员', status: 'enabled', time: '2026-02-15 14:20' },
-              { user: 'anno_02', name: '李四', role: '标注员', status: 'disabled', time: '2026-02-20 09:30' },
-            ].map((u, i) => (
+            {filteredUsers.length > 0 ? filteredUsers.map((u, i) => (
               <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
                 <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{u.user}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{u.name}</td>
@@ -147,7 +173,13 @@ export default function SystemManagement({ activeSubTab }: SystemManagementProps
                   </div>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  未找到匹配的用户
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

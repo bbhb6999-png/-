@@ -11,7 +11,9 @@ import {
   Monitor,
   Database,
   Cpu,
-  Activity
+  Activity,
+  Search,
+  Filter
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { 
@@ -59,13 +61,38 @@ const RESOURCE_DATA: ResourceUsage[] = [
 ];
 
 const QUICK_ENTRIES = [
-  { label: '新建评测', icon: Plus, color: 'bg-blue-500' },
-  { label: '数据导入', icon: Database, color: 'bg-emerald-500' },
-  { label: '资源监控', icon: Monitor, color: 'bg-indigo-500' },
-  { label: '生成报告', icon: Activity, color: 'bg-orange-500' },
+  { label: '新建评测', icon: Plus, color: 'bg-blue-500', tab: 'evaluation', subTab: 'task-mgmt' },
+  { label: '数据导入', icon: Database, color: 'bg-emerald-500', tab: 'data-proc', subTab: 'img-proc' },
+  { label: '资源监控', icon: Monitor, color: 'bg-indigo-500', tab: 'resource', subTab: 'res-monitor' },
+  { label: '生成报告', icon: Activity, color: 'bg-orange-500', tab: 'evaluation', subTab: 'reports' },
 ];
 
-export default function Workbench() {
+interface WorkbenchProps {
+  navigate: (tabId: string, subTabId?: string) => void;
+}
+
+export default function Workbench({ navigate }: WorkbenchProps) {
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [typeFilter, setTypeFilter] = React.useState('all');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [creatorFilter, setCreatorFilter] = React.useState('');
+
+  const filteredTasks = React.useMemo(() => {
+    return RECENT_TASKS.filter(task => {
+      const matchesSearch = task.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           task.id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === 'all' || task.type === typeFilter;
+      const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+      const matchesCreator = task.creator.toLowerCase().includes(creatorFilter.toLowerCase());
+      
+      return matchesSearch && matchesType && matchesStatus && matchesCreator;
+    });
+  }, [searchQuery, typeFilter, statusFilter, creatorFilter]);
+
+  const taskTypes = React.useMemo(() => {
+    return Array.from(new Set(RECENT_TASKS.map(t => t.type)));
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
@@ -141,7 +168,11 @@ export default function Workbench() {
             <h3 className="font-semibold text-[var(--text-primary)] mb-4">快速入口</h3>
             <div className="grid grid-cols-2 gap-3">
               {QUICK_ENTRIES.map((entry, i) => (
-                <button key={i} className="flex flex-col items-center justify-center p-4 rounded-xl border border-[var(--border-color)] hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group">
+                <button 
+                  key={i} 
+                  onClick={() => navigate(entry.tab, entry.subTab)}
+                  className="flex flex-col items-center justify-center p-4 rounded-xl border border-[var(--border-color)] hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group"
+                >
                   <div className={`w-10 h-10 ${entry.color} rounded-lg flex items-center justify-center text-white mb-2 shadow-lg shadow-blue-500/10`}>
                     <entry.icon className="w-5 h-5" />
                   </div>
@@ -179,11 +210,60 @@ export default function Workbench() {
 
       {/* Recent Tasks */}
       <div className="card overflow-hidden">
-        <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
-          <h3 className="font-semibold text-[var(--text-primary)]">最近任务</h3>
-          <button className="text-sm text-blue-500 hover:text-blue-600 font-medium flex items-center">
-            查看全部 <ArrowRight className="w-4 h-4 ml-1" />
-          </button>
+        <div className="px-6 py-4 border-b border-[var(--border-color)] flex flex-col space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-[var(--text-primary)]">最近任务</h3>
+            <button 
+              onClick={() => navigate('evaluation', 'task-mgmt')}
+              className="text-sm text-blue-500 hover:text-blue-600 font-medium flex items-center"
+            >
+              查看全部 <ArrowRight className="w-4 h-4 ml-1" />
+            </button>
+          </div>
+          
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+              <input 
+                type="text" 
+                placeholder="搜索任务名称或ID..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <select 
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-[var(--text-primary)]"
+            >
+              <option value="all">所有类型</option>
+              {taskTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-[var(--text-primary)]"
+            >
+              <option value="all">所有状态</option>
+              <option value="running">进行中</option>
+              <option value="completed">已完成</option>
+              <option value="failed">已失败</option>
+              <option value="pending">待开始</option>
+            </select>
+            <div className="relative w-40">
+              <input 
+                type="text" 
+                placeholder="创建人..." 
+                value={creatorFilter}
+                onChange={(e) => setCreatorFilter(e.target.value)}
+                className="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -199,7 +279,7 @@ export default function Workbench() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-color)]">
-              {RECENT_TASKS.map((task) => (
+              {filteredTasks.length > 0 ? filteredTasks.map((task) => (
                 <tr key={task.id} className="hover:bg-[var(--bg-primary)] transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
@@ -251,10 +331,26 @@ export default function Workbench() {
                   <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.creator}</td>
                   <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.createTime}</td>
                   <td className="px-6 py-4">
-                    <button className="text-blue-500 hover:text-blue-600 text-xs font-medium">详情</button>
+                    <button 
+                      onClick={() => {
+                        if (task.id === 'T-1024') navigate('evaluation', 'task-mgmt');
+                        if (task.id === 'T-1023') navigate('resource', 'perf-stats');
+                        if (task.id === 'T-1022') navigate('interface', 'api-compat');
+                        if (task.id === 'T-1021') navigate('annotation', 'img-anno');
+                      }}
+                      className="text-blue-500 hover:text-blue-600 text-xs font-medium"
+                    >
+                      详情
+                    </button>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                    未找到匹配的任务
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -60,6 +60,31 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [executionProgress, setExecutionProgress] = useState(0);
   const [isExecuting, setIsExecuting] = useState(false);
+  
+  // Filter States
+  const [apiSearch, setApiSearch] = useState('');
+  const [apiStatusFilter, setApiStatusFilter] = useState('所有状态');
+
+  // Mock Data
+  const API_TESTS = [
+    { name: '人脸检测接口功能测试', url: '/api/v1/face/detect', method: 'POST', status: 'success', time: '2026-03-01 10:00' },
+    { name: '车辆识别接口连通性', url: '/api/v1/vehicle/identify', method: 'GET', status: 'failed', time: '2026-03-01 11:30' },
+    { name: '轨迹查询接口性能预检', url: '/api/v1/track/query', method: 'POST', status: 'none', time: '2026-03-01 14:20' },
+  ];
+
+  const filteredAPITests = React.useMemo(() => {
+    return API_TESTS.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(apiSearch.toLowerCase()) || 
+                           item.url.toLowerCase().includes(apiSearch.toLowerCase());
+      const statusMap: Record<string, string> = {
+        '成功': 'success',
+        '失败': 'failed',
+        '未执行': 'none'
+      };
+      const matchesStatus = apiStatusFilter === '所有状态' || item.status === statusMap[apiStatusFilter];
+      return matchesSearch && matchesStatus;
+    });
+  }, [apiSearch, apiStatusFilter]);
 
   useEffect(() => {
     setView('list');
@@ -121,9 +146,19 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
     <div className="card p-4 mb-6 flex flex-wrap items-center gap-4">
       <div className="relative flex-1 min-w-[240px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
-        <input type="text" placeholder="搜索接口名称、地址..." className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+        <input 
+          type="text" 
+          placeholder="搜索接口名称、地址..." 
+          value={apiSearch}
+          onChange={(e) => setApiSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
+        />
       </div>
-      <select className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+      <select 
+        value={apiStatusFilter}
+        onChange={(e) => setApiStatusFilter(e.target.value)}
+        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-[var(--text-primary)]"
+      >
         <option>所有状态</option>
         <option>成功</option>
         <option>失败</option>
@@ -154,11 +189,7 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {[
-              { name: '人脸检测接口功能测试', url: '/api/v1/face/detect', method: 'POST', status: 'success', time: '2026-03-01 10:00' },
-              { name: '车辆识别接口连通性', url: '/api/v1/vehicle/identify', method: 'GET', status: 'failed', time: '2026-03-01 11:30' },
-              { name: '轨迹查询接口性能预检', url: '/api/v1/track/query', method: 'POST', status: 'none', time: '2026-03-01 14:20' },
-            ].map((item, i) => (
+            {filteredAPITests.length > 0 ? filteredAPITests.map((item, i) => (
               <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors group">
                 <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{item.name}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{item.url}</td>
@@ -182,7 +213,13 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
                   </div>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  未找到匹配的测试
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

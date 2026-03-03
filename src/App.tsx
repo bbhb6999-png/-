@@ -20,9 +20,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('workbench');
   const [activeSubTab, setActiveSubTab] = useState('');
 
+  const navigate = (tabId: string, subTabId: string = '') => {
+    setActiveTab(tabId);
+    if (subTabId) {
+      setActiveSubTab(subTabId);
+    } else {
+      const nav = NAV_ITEMS.find(n => n.id === tabId);
+      setActiveSubTab(nav?.subItems?.[0]?.id || '');
+    }
+  };
+
   const renderContent = () => {
     if (activeTab === 'workbench') {
-      return <Workbench />;
+      return <Workbench navigate={navigate} />;
     }
 
     if (activeTab === 'evaluation') {

@@ -144,6 +144,19 @@ export default function ResultVerification({ activeSubTab }: ResultVerificationP
   const [compareList, setCompareList] = useState<TestResult[]>([]);
   const [analysisPair, setAnalysisPair] = useState<[TestResult, TestResult] | null>(null);
 
+  // Filter States
+  const [resSearch, setResSearch] = useState('');
+  const [resTypeFilter, setResTypeFilter] = useState('测试类型');
+
+  const filteredResults = useMemo(() => {
+    return MOCK_RESULTS.filter(res => {
+      const matchesSearch = res.name.toLowerCase().includes(resSearch.toLowerCase()) || 
+                           res.taskName.toLowerCase().includes(resSearch.toLowerCase());
+      const matchesType = resTypeFilter === '测试类型' || res.type === resTypeFilter;
+      return matchesSearch && matchesType;
+    });
+  }, [resSearch, resTypeFilter]);
+
   useEffect(() => {
     if (activeSubTab === 'res-list') setView('list');
     if (activeSubTab === 'res-comp') setView('compare');
@@ -190,10 +203,16 @@ export default function ResultVerification({ activeSubTab }: ResultVerificationP
           <input 
             type="text" 
             placeholder="搜索测试名称、任务名称..." 
+            value={resSearch}
+            onChange={(e) => setResSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/20" 
           />
         </div>
-        <select className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none">
+        <select 
+          value={resTypeFilter}
+          onChange={(e) => setResTypeFilter(e.target.value)}
+          className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm outline-none text-[var(--text-primary)]"
+        >
           <option>测试类型</option>
           <option>UI测试</option>
           <option>接口测试</option>
@@ -223,7 +242,7 @@ export default function ResultVerification({ activeSubTab }: ResultVerificationP
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {MOCK_RESULTS.map((res) => (
+            {filteredResults.length > 0 ? filteredResults.map((res) => (
               <tr key={res.id} className="hover:bg-[var(--bg-primary)] transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center">
@@ -263,7 +282,13 @@ export default function ResultVerification({ activeSubTab }: ResultVerificationP
                   </div>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  未找到匹配的测试结果
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
