@@ -52,7 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
     subItems: [
       { id: 'img-anno', label: '图片标注' },
       { id: 'video-anno', label: '视频标注' },
-      { id: 'export-anno', label: '标注导出' },
+      { id: 'dataset-mgmt', label: '数据集管理' },
     ]
   },
   { 
