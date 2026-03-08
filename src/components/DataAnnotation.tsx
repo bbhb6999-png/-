@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   Clock, 
   AlertCircle,
+  Info,
   MousePointer2,
   Square,
   Undo2,
@@ -114,7 +115,6 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [datasetModalConfig, setDatasetModalConfig] = useState<{ open: boolean; dataset?: Dataset }>({ open: false });
   const [exportDatasetModalConfig, setExportDatasetModalConfig] = useState<{ open: boolean; datasets: Dataset[] }>({ open: false, datasets: [] });
 
-  const [taskModalConfig, setTaskModalConfig] = useState<{ open: boolean; type?: 'image' | 'video' }>({ open: false });
   const [importModalConfig, setImportModalConfig] = useState<{ open: boolean; type?: 'image' | 'video' }>({ open: false });
   const [statsModalConfig, setStatsModalConfig] = useState<{ open: boolean; task?: any }>({ open: false });
   const [imageFiles, setImageFiles] = useState([
@@ -325,15 +325,9 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => setImportModalConfig({ open: true, type: 'image' })}
-            className="flex items-center px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)]"
-          >
-            <Upload className="w-4 h-4 mr-2" /> 导入数据集
-          </button>
-          <button 
-            onClick={() => setTaskModalConfig({ open: true, type: 'image' })}
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20"
           >
-            <Plus className="w-4 h-4 mr-2" /> 新建标注任务
+            <Plus className="w-4 h-4 mr-2" /> 导入数据集
           </button>
         </div>
       </div>
@@ -426,15 +420,9 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => setImportModalConfig({ open: true, type: 'video' })}
-            className="flex items-center px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)]"
-          >
-            <Upload className="w-4 h-4 mr-2" /> 导入数据集
-          </button>
-          <button 
-            onClick={() => setTaskModalConfig({ open: true, type: 'video' })}
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20"
           >
-            <Plus className="w-4 h-4 mr-2" /> 新建标注任务
+            <Plus className="w-4 h-4 mr-2" /> 导入数据集
           </button>
         </div>
       </div>
@@ -1360,223 +1348,165 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Dataset List Card */}
-          <div className="card overflow-hidden">
-            <div className="p-4 border-b border-[var(--border-color)] flex flex-wrap items-center justify-between gap-4">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b border-[var(--border-color)] flex flex-wrap items-center justify-between gap-4">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+            <input 
+              type="text" 
+              placeholder="搜索数据集名称..." 
+              value={dsSearch}
+              onChange={(e) => setDsSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <button 
+              disabled={selectedDatasetIds.length === 0}
+              onClick={() => {
+                const selectedDatasets = datasets.filter(ds => selectedDatasetIds.includes(ds.id));
+                const exportable = selectedDatasets.filter(isDatasetExportable);
+                if (exportable.length < selectedDatasets.length) {
+                  alert('部分选中的数据集有关联任务未完成，无法导出');
+                }
+                if (exportable.length > 0) {
+                  setExportDatasetModalConfig({ open: true, datasets: exportable });
+                }
+              }}
+              className="flex items-center px-3 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium hover:bg-[var(--bg-primary)] disabled:opacity-50"
+            >
+              <Download className="w-4 h-4 mr-2" /> 批量导出
+            </button>
+            <button 
+              disabled={selectedDatasetIds.length === 0}
+              onClick={() => {
+                if (confirm(`确定要删除选中的 ${selectedDatasetIds.length} 个数据集吗？`)) {
+                  setDatasets(prev => prev.filter(ds => !selectedDatasetIds.includes(ds.id)));
+                  setSelectedDatasetIds([]);
+                }
+              }}
+              className="flex items-center px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> 批量删除
+            </button>
+          </div>
+        </div>
+
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 w-10">
                 <input 
-                  type="text" 
-                  placeholder="搜索数据集名称..." 
-                  value={dsSearch}
-                  onChange={(e) => setDsSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <button 
-                  disabled={selectedDatasetIds.length === 0}
-                  onClick={() => {
-                    const selectedDatasets = datasets.filter(ds => selectedDatasetIds.includes(ds.id));
-                    const exportable = selectedDatasets.filter(isDatasetExportable);
-                    if (exportable.length < selectedDatasets.length) {
-                      alert('部分选中的数据集有关联任务未完成，无法导出');
-                    }
-                    if (exportable.length > 0) {
-                      setExportDatasetModalConfig({ open: true, datasets: exportable });
-                    }
-                  }}
-                  className="flex items-center px-3 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium hover:bg-[var(--bg-primary)] disabled:opacity-50"
-                >
-                  <Download className="w-4 h-4 mr-2" /> 批量导出
-                </button>
-                <button 
-                  disabled={selectedDatasetIds.length === 0}
-                  onClick={() => {
-                    if (confirm(`确定要删除选中的 ${selectedDatasetIds.length} 个数据集吗？`)) {
-                      setDatasets(prev => prev.filter(ds => !selectedDatasetIds.includes(ds.id)));
+                  type="checkbox" 
+                  className="rounded text-blue-500"
+                  checked={selectedDatasetIds.length === filteredDatasets.length && filteredDatasets.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedDatasetIds(filteredDatasets.map(ds => ds.id));
+                    } else {
                       setSelectedDatasetIds([]);
                     }
                   }}
-                  className="flex items-center px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" /> 批量删除
-                </button>
-              </div>
-            </div>
-
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
-                  <th className="px-6 py-4 w-10">
+                />
+              </th>
+              <th className="px-6 py-4 font-semibold">数据集名称</th>
+              <th className="px-6 py-4 font-semibold">类型</th>
+              <th className="px-6 py-4 font-semibold">数据量</th>
+              <th className="px-6 py-4 font-semibold">关联任务</th>
+              <th className="px-6 py-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {filteredDatasets.map((ds) => {
+              const exportable = isDatasetExportable(ds);
+              const associatedTasks = [...imageTasks, ...videoTasks].filter(t => ds.taskIds.includes(t.id));
+              
+              return (
+                <tr key={ds.id} className="hover:bg-[var(--bg-primary)] transition-colors group">
+                  <td className="px-6 py-4">
                     <input 
                       type="checkbox" 
                       className="rounded text-blue-500"
-                      checked={selectedDatasetIds.length === filteredDatasets.length && filteredDatasets.length > 0}
+                      checked={selectedDatasetIds.includes(ds.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedDatasetIds(filteredDatasets.map(ds => ds.id));
+                          setSelectedDatasetIds([...selectedDatasetIds, ds.id]);
                         } else {
-                          setSelectedDatasetIds([]);
+                          setSelectedDatasetIds(selectedDatasetIds.filter(id => id !== ds.id));
                         }
                       }}
                     />
-                  </th>
-                  <th className="px-6 py-4 font-semibold">数据集名称</th>
-                  <th className="px-6 py-4 font-semibold">类型</th>
-                  <th className="px-6 py-4 font-semibold">数据量</th>
-                  <th className="px-6 py-4 font-semibold">关联任务</th>
-                  <th className="px-6 py-4 text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-color)]">
-                {filteredDatasets.map((ds) => {
-                  const exportable = isDatasetExportable(ds);
-                  const associatedTasks = [...imageTasks, ...videoTasks].filter(t => ds.taskIds.includes(t.id));
-                  
-                  return (
-                    <tr key={ds.id} className="hover:bg-[var(--bg-primary)] transition-colors group">
-                      <td className="px-6 py-4">
-                        <input 
-                          type="checkbox" 
-                          className="rounded text-blue-500"
-                          checked={selectedDatasetIds.includes(ds.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedDatasetIds([...selectedDatasetIds, ds.id]);
-                            } else {
-                              setSelectedDatasetIds(selectedDatasetIds.filter(id => id !== ds.id));
-                            }
-                          }}
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 mr-3">
-                            <Database className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-[var(--text-primary)]">{ds.name}</div>
-                            <div className="text-[10px] text-[var(--text-secondary)]">ID: {ds.id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={cn(
-                          "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                          ds.type === 'image' ? "bg-purple-50 text-purple-600" : "bg-orange-50 text-orange-600"
-                        )}>
-                          {ds.type === 'image' ? '图片' : '视频'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{ds.dataCount}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {associatedTasks.map(t => (
-                            <span key={t.id} className={cn(
-                              "text-[9px] px-1.5 py-0.5 rounded border flex items-center",
-                              t.status === 'completed' ? "border-emerald-200 text-emerald-600 bg-emerald-50" : "border-blue-200 text-blue-600 bg-blue-50"
-                            )}>
-                              {t.status === 'completed' && <CheckCircle2 className="w-2 h-2 mr-1" />}
-                              {t.name}
-                            </span>
-                          ))}
-                          {associatedTasks.length === 0 && <span className="text-[10px] text-slate-400 italic">未关联任务</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-3">
-                          <button 
-                            disabled={!exportable}
-                            onClick={() => setExportDatasetModalConfig({ open: true, datasets: [ds] })}
-                            className={cn(
-                              "text-xs font-medium transition-colors",
-                              exportable ? "text-blue-500 hover:text-blue-600" : "text-slate-300 cursor-not-allowed"
-                            )}
-                            title={exportable ? "导出标注成果" : "有关联任务未完成，无法导出"}
-                          >
-                            导出
-                          </button>
-                          <button 
-                            onClick={() => setDatasetModalConfig({ open: true, dataset: ds })}
-                            className="text-xs font-medium text-slate-500 hover:text-slate-600"
-                          >
-                            编辑
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (confirm('确定要删除该数据集吗？')) {
-                                setDatasets(prev => prev.filter(item => item.id !== ds.id));
-                              }
-                            }}
-                            className="text-xs font-medium text-red-500 hover:text-red-600"
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Right: Export History */}
-        <div className="space-y-6">
-          <div className="card flex flex-col h-full min-h-[500px]">
-            <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between">
-              <h3 className="text-sm font-bold flex items-center">
-                <History className="w-4 h-4 mr-2 text-blue-500" /> 导出历史记录
-              </h3>
-              <button 
-                onClick={() => setExportHistory([])}
-                className="text-[10px] text-red-500 hover:text-red-600 font-medium"
-              >
-                清空记录
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {exportHistory.map((record) => (
-                <div key={record.id} className="p-3 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] group">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold truncate">{record.datasetName}</div>
-                      <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">{record.time}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 mr-3">
+                        <Database className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">{ds.name}</div>
+                        <div className="text-[10px] text-[var(--text-secondary)]">ID: {ds.id}</div>
+                      </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={cn(
-                      "text-[9px] px-1.5 py-0.5 rounded font-bold uppercase",
-                      record.status === 'completed' ? "bg-emerald-100 text-emerald-700" :
-                      record.status === 'processing' ? "bg-blue-100 text-blue-700 animate-pulse" :
-                      "bg-red-100 text-red-700"
+                      "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                      ds.type === 'image' ? "bg-purple-50 text-purple-600" : "bg-orange-50 text-orange-600"
                     )}>
-                      {record.status === 'completed' ? '成功' : record.status === 'processing' ? '进行中' : '失败'}
+                      {ds.type === 'image' ? '图片' : '视频'}
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-blue-500 px-1.5 py-0.5 bg-blue-50 rounded">
-                      {record.format}
-                    </span>
-                    {record.status === 'completed' && (
-                      <button className="text-[10px] text-blue-600 hover:underline flex items-center font-medium">
-                        <Download className="w-3 h-3 mr-1" /> 下载
+                  </td>
+                  <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{ds.dataCount}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {associatedTasks.map(t => (
+                        <span key={t.id} className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded border flex items-center",
+                          t.status === 'completed' ? "border-emerald-200 text-emerald-600 bg-emerald-50" : "border-blue-200 text-blue-600 bg-blue-50"
+                        )}>
+                          {t.status === 'completed' && <CheckCircle2 className="w-2 h-2 mr-1" />}
+                          {t.name}
+                        </span>
+                      ))}
+                      {associatedTasks.length === 0 && <span className="text-[10px] text-slate-400 italic">未关联任务</span>}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end space-x-3">
+                      <button 
+                        disabled={!exportable}
+                        onClick={() => setExportDatasetModalConfig({ open: true, datasets: [ds] })}
+                        className={cn(
+                          "text-xs font-medium transition-colors",
+                          exportable ? "text-blue-500 hover:text-blue-600" : "text-slate-300 cursor-not-allowed"
+                        )}
+                        title={exportable ? "导出标注成果" : "有关联任务未完成，无法导出"}
+                      >
+                        导出
                       </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {exportHistory.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-[var(--text-secondary)] space-y-2 py-12">
-                  <History className="w-8 h-8 opacity-20" />
-                  <span className="text-xs">暂无导出记录</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+                      <button 
+                        onClick={() => setDatasetModalConfig({ open: true, dataset: ds })}
+                        className="text-xs font-medium text-slate-500 hover:text-slate-600"
+                      >
+                        编辑
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (confirm('确定要删除该数据集吗？')) {
+                            setDatasets(prev => prev.filter(item => item.id !== ds.id));
+                          }
+                        }}
+                        className="text-xs font-medium text-red-500 hover:text-red-600"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -1584,6 +1514,16 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const DatasetModal = ({ config, onClose }: { config: any; onClose: () => void }) => {
     const [name, setName] = useState(config.dataset?.name || '');
     const [type, setType] = useState(config.dataset?.type || 'image');
+    const [isDragging, setIsDragging] = useState(false);
+    const [files, setFiles] = useState<File[]>([]);
+
+    const handleDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      if (e.dataTransfer.files) {
+        setFiles(Array.from(e.dataTransfer.files));
+      }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -1596,7 +1536,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           type,
           taskIds: [],
           createdAt: new Date().toISOString().split('T')[0],
-          dataCount: 0
+          dataCount: files.length > 0 ? 120 : 0
         };
         setDatasets([newDs, ...datasets]);
       }
@@ -1608,37 +1548,79 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+          className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
         >
           <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
-            <h3 className="text-lg font-bold">{config.dataset ? '编辑数据集' : '新建数据集'}</h3>
+            <div className="flex items-center">
+              <Database className="w-5 h-5 mr-2 text-blue-500" />
+              <h3 className="text-lg font-bold">{config.dataset ? '编辑数据集' : '新建数据集'}</h3>
+            </div>
             <button onClick={onClose} className="p-1 hover:bg-[var(--bg-primary)] rounded-lg transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">数据集名称</label>
-              <input 
-                required
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="请输入数据集名称"
-                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+          
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">数据集名称</label>
+                  <input 
+                    required
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="请输入数据集名称"
+                    className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">数据集类型</label>
+                  <select 
+                    value={type}
+                    onChange={(e) => setType(e.target.value as 'image' | 'video')}
+                    className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="image">图片数据集</option>
+                    <option value="video">视频数据集</option>
+                  </select>
+                </div>
+              </div>
+
+              {!config.dataset && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">上传文件</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    className={cn(
+                      "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer",
+                      isDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10" : "border-[var(--border-color)] hover:border-blue-400 hover:bg-[var(--bg-primary)]"
+                    )}
+                  >
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm font-medium">点击或拖拽文件到此处上传</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">支持 .zip, .tar, .json, .xml 等格式</p>
+                    
+                    {files.length > 0 && (
+                      <div className="mt-4 w-full bg-[var(--bg-primary)] rounded-lg p-3 border border-[var(--border-color)]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium truncate max-w-[200px]">{files[0].name}</span>
+                          <span className="text-[10px] text-[var(--text-secondary)]">{(files[0].size / 1024 / 1024).toFixed(2)} MB</span>
+                        </div>
+                        <div className="mt-2 h-1 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 w-full" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">数据类型</label>
-              <select 
-                value={type}
-                onChange={(e) => setType(e.target.value as 'image' | 'video')}
-                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                <option value="image">图片数据集</option>
-                <option value="video">视频数据集</option>
-              </select>
-            </div>
+
             <div className="pt-4 flex justify-end space-x-3">
               <button type="button" onClick={onClose} className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-primary)]">取消</button>
               <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/20">确定</button>
@@ -1745,103 +1727,20 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       </div>
     );
   };
-  const TaskModal = ({ config, onClose, onAdd }: { config: any; onClose: () => void; onAdd: (task: any) => void }) => {
-    const [name, setName] = useState('');
-    const [dataset, setDataset] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      onAdd({
-        id: `${config.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`,
-        name,
-        total: 100,
-        completed: 0,
-        status: 'pending',
-        extractStatus: config.type === 'video' ? 'pending' : undefined,
-        time: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5)
-      });
-      onClose();
-    };
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
-        >
-          <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
-            <h3 className="text-lg font-bold">新建{config.type === 'image' ? '图片' : '视频'}标注任务</h3>
-            <button onClick={onClose} className="p-1 hover:bg-[var(--bg-primary)] rounded-lg transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">任务名称</label>
-              <input 
-                required
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="请输入标注任务名称"
-                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">源数据集</label>
-              <select 
-                required
-                value={dataset}
-                onChange={(e) => setDataset(e.target.value)}
-                className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                <option value="">请选择数据集</option>
-                <option value="ds1">标准人脸库-V1 (5000条)</option>
-                <option value="ds2">城市交通监控-夜间 (1200条)</option>
-                <option value="ds3">违停车辆抓拍集 (800条)</option>
-              </select>
-            </div>
-            <div className="pt-4 flex justify-end space-x-3">
-              <button 
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-primary)]"
-              >
-                取消
-              </button>
-              <button 
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-              >
-                创建任务
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    );
-  };
-
   const ImportModal = ({ config, onClose, onImport }: { config: any; onClose: () => void; onImport: (data: any) => void }) => {
     const [name, setName] = useState('');
+    const [selectedDsId, setSelectedDsId] = useState('');
     const [format, setFormat] = useState('COCO');
-    const [isDragging, setIsDragging] = useState(false);
-    const [files, setFiles] = useState<File[]>([]);
 
-    const handleDrop = (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      if (e.dataTransfer.files) {
-        setFiles(Array.from(e.dataTransfer.files));
-      }
-    };
+    const availableDatasets = datasets.filter(ds => ds.type === config.type);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
+      const selectedDs = datasets.find(ds => ds.id === selectedDsId);
       onImport({
-        name,
-        fileCount: 120
+        name: name || selectedDs?.name,
+        datasetId: selectedDsId,
+        fileCount: selectedDs?.dataCount || 120
       });
       onClose();
     };
@@ -1855,8 +1754,8 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         >
           <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
             <div className="flex items-center">
-              <Upload className="w-5 h-5 mr-2 text-blue-500" />
-              <h3 className="text-lg font-bold">导入{config.type === 'image' ? '图片' : '视频'}数据集</h3>
+              <Layers className="w-5 h-5 mr-2 text-blue-500" />
+              <h3 className="text-lg font-bold">导入数据集</h3>
             </div>
             <button onClick={onClose} className="p-1 hover:bg-[var(--bg-primary)] rounded-lg transition-colors">
               <X className="w-5 h-5" />
@@ -1864,70 +1763,58 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           </div>
           
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">数据集名称</label>
+                <label className="text-sm font-medium">任务名称</label>
                 <input 
                   required
                   type="text" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="输入数据集名称"
+                  placeholder="请输入任务名称"
                   className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">数据格式</label>
-                <select 
-                  value={format}
-                  onChange={(e) => setFormat(e.target.value)}
-                  className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  <option>COCO</option>
-                  <option>YOLO</option>
-                  <option>Pascal VOC</option>
-                  <option>LabelMe</option>
-                  <option>Raw Files (无标注)</option>
-                </select>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">上传文件</label>
-              <div 
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={cn(
-                  "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer",
-                  isDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10" : "border-[var(--border-color)] hover:border-blue-400 hover:bg-[var(--bg-primary)]"
-                )}
-              >
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mb-4">
-                  <Upload className="w-6 h-6" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">选择数据集</label>
+                  <select 
+                    required
+                    value={selectedDsId}
+                    onChange={(e) => setSelectedDsId(e.target.value)}
+                    className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="">请选择数据集</option>
+                    {availableDatasets.map(ds => (
+                      <option key={ds.id} value={ds.id}>{ds.name} ({ds.dataCount})</option>
+                    ))}
+                  </select>
                 </div>
-                <p className="text-sm font-medium">点击或拖拽文件到此处上传</p>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">支持 .zip, .tar, .json, .xml 等格式</p>
-                
-                {files.length > 0 && (
-                  <div className="mt-4 w-full bg-[var(--bg-primary)] rounded-lg p-3 border border-[var(--border-color)]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium truncate max-w-[200px]">{files[0].name}</span>
-                      <span className="text-[10px] text-[var(--text-secondary)]">{(files[0].size / 1024 / 1024).toFixed(2)} MB</span>
-                    </div>
-                    <div className="mt-2 h-1 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 w-full" />
-                    </div>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">标注格式</label>
+                  <select 
+                    value={format}
+                    onChange={(e) => setFormat(e.target.value)}
+                    className="w-full px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option>COCO</option>
+                    <option>YOLO</option>
+                    <option>Pascal VOC</option>
+                    <option>LabelMe</option>
+                    <option>Raw Files (无标注)</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg p-3 flex items-start">
-              <AlertCircle className="w-4 h-4 text-amber-500 mr-2 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                提示：导入大型数据集可能需要几分钟时间。请确保压缩包结构符合所选格式规范。
-              </p>
+              {availableDatasets.length === 0 && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-lg flex items-start">
+                  <Info className="w-4 h-4 text-blue-500 mr-2 shrink-0 mt-0.5" />
+                  <div className="text-xs text-blue-700 dark:text-blue-400">
+                    暂无可用数据集。请先前往 <button type="button" onClick={() => { setView('datasetMgmt'); onClose(); }} className="font-bold underline">数据集管理</button> 上传数据。
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 flex justify-end space-x-3">
@@ -1940,10 +1827,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               </button>
               <button 
                 type="submit"
-                disabled={!name || files.length === 0}
+                disabled={!name || !selectedDsId}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/20"
               >
-                开始导入
+                开始标注
               </button>
             </div>
           </form>
@@ -2139,26 +2026,13 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             onClose={() => setExportDatasetModalConfig({ open: false, datasets: [] })}
           />
         )}
-        {taskModalConfig.open && (
-          <TaskModal 
-            config={taskModalConfig}
-            onClose={() => setTaskModalConfig({ open: false })}
-            onAdd={(task) => {
-              if (taskModalConfig.type === 'image') {
-                setImageTasks([task, ...imageTasks]);
-              } else {
-                setVideoTasks([task, ...videoTasks]);
-              }
-            }}
-          />
-        )}
         {importModalConfig.open && (
           <ImportModal
             config={importModalConfig}
             onClose={() => setImportModalConfig({ open: false })}
             onImport={(data) => {
               const newTask = {
-                id: `${importModalConfig.type === 'image' ? 'IMG' : 'VID'}-IMPORT-${Math.floor(Math.random() * 1000)}`,
+                id: `${importModalConfig.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`,
                 name: data.name,
                 total: data.fileCount || 100,
                 completed: 0,
