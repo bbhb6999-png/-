@@ -20,7 +20,8 @@ import {
   Maximize2,
   RefreshCw,
   Check,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -53,6 +54,7 @@ interface NamingRule {
   digits: number;
   useTimestamp: boolean;
   useOriginalName: boolean;
+  duplicateHandling: 'skip' | 'overwrite' | 'rename';
 }
 
 interface ProcessResult {
@@ -82,6 +84,7 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
     digits: 3,
     useTimestamp: false,
     useOriginalName: false,
+    duplicateHandling: 'rename',
   });
   const [results, setResults] = useState<ProcessResult[]>([]);
 
@@ -92,7 +95,7 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
   }, [activeSubTab]);
 
   // Helper to generate new name based on rules
-  const generateNewName = (originalName: string, index: number) => {
+  const generateNewName = (originalName: string, index: number, currentGeneratedNames: string[] = []) => {
     const ext = originalName.split('.').pop();
     let name = namingRule.prefix;
     
@@ -111,24 +114,48 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
       name += namingRule.suffix;
     }
     
-    return `${name}.${ext}`;
+    let finalName = `${name}.${ext}`;
+    
+    // Check for duplicates in existing images or already generated names in this batch
+    const allExistingNames = [...images.map(img => img.name), ...currentGeneratedNames];
+    
+    if (allExistingNames.includes(finalName)) {
+      if (namingRule.duplicateHandling === 'skip') {
+        return null;
+      } else if (namingRule.duplicateHandling === 'rename') {
+        let counter = 1;
+        while (allExistingNames.includes(`${name}_${counter}.${ext}`)) {
+          counter++;
+        }
+        finalName = `${name}_${counter}.${ext}`;
+      }
+      // 'overwrite' returns the name as is
+    }
+    
+    return finalName;
   };
 
   const exampleName = useMemo(() => {
-    return generateNewName('example.jpg', 0);
-  }, [namingRule]);
+    return generateNewName('example.jpg', 0) || 'example.jpg';
+  }, [namingRule, images]);
 
   const selectedImages = useMemo(() => {
     return images.filter(img => selectedIds.includes(img.id));
   }, [images, selectedIds]);
 
   const previewResults = useMemo(() => {
-    return selectedImages.map((img, idx) => ({
-      originalName: img.name,
-      newName: generateNewName(img.name, idx),
-      status: 'success' as const
-    }));
-  }, [selectedImages, namingRule]);
+    const generated: string[] = [];
+    return selectedImages.map((img, idx) => {
+      const newName = generateNewName(img.name, idx, generated);
+      if (newName) generated.push(newName);
+      
+      return {
+        originalName: img.name,
+        newName: newName || '(已跳过)',
+        status: newName ? 'success' as const : 'error' as const
+      };
+    });
+  }, [selectedImages, namingRule, images]);
 
   // --- Sub-page Renders ---
 
@@ -434,6 +461,33 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
                   </div>
                 </label>
               </div>
+
+              <div className="space-y-1.5 pt-2">
+                <label className="text-xs font-bold text-[var(--text-secondary)] uppercase flex items-center">
+                  <Copy className="w-3 h-3 mr-1" /> 重复文件处理
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['skip', 'overwrite', 'rename'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setNamingRule(prev => ({ ...prev, duplicateHandling: mode }))}
+                      className={cn(
+                        "px-2 py-1.5 text-[10px] font-bold rounded-lg border transition-all",
+                        namingRule.duplicateHandling === mode 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-blue-500/50"
+                      )}
+                    >
+                      {mode === 'skip' ? '跳过' : mode === 'overwrite' ? '覆盖' : '重命名'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[var(--text-secondary)] leading-tight">
+                  {namingRule.duplicateHandling === 'skip' && "检测到重名时，将不处理该文件。"}
+                  {namingRule.duplicateHandling === 'overwrite' && "检测到重名时，将直接覆盖目标文件。"}
+                  {namingRule.duplicateHandling === 'rename' && "检测到重名时，将自动在文件名后添加数字序号。"}
+                </p>
+              </div>
             </div>
 
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
@@ -501,7 +555,11 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
                   </td>
                   <td className="px-6 py-4 text-sm text-blue-600 font-mono font-bold">{res.newName}</td>
                   <td className="px-6 py-4 text-right">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-900/20 font-bold uppercase">Ready</span>
+                    {res.status === 'success' ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-900/20 font-bold uppercase">Ready</span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 dark:bg-amber-900/20 font-bold uppercase">Skipped</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -537,7 +595,7 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
         <div>
           <h3 className="text-xl font-bold text-[var(--text-primary)]">批量命名执行成功</h3>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
-            共处理 {results.length} 个文件，成功 {results.filter(r => r.status === 'success').length} 个，失败 0 个
+            共处理 {results.length} 个文件，成功 {results.filter(r => r.status === 'success' && r.newName !== '(已跳过)').length} 个，跳过 {results.filter(r => r.newName === '(已跳过)').length} 个，失败 0 个
           </p>
         </div>
       </div>
@@ -558,9 +616,15 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{res.originalName}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-primary)] font-mono font-medium">{res.newName}</td>
                 <td className="px-6 py-4 text-right">
-                  <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 font-bold uppercase">
-                    <Check className="w-3 h-3 mr-1" /> Success
-                  </span>
+                  {res.newName === '(已跳过)' ? (
+                    <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 font-bold uppercase">
+                      <AlertCircle className="w-3 h-3 mr-1" /> Skipped
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 font-bold uppercase">
+                      <Check className="w-3 h-3 mr-1" /> Success
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

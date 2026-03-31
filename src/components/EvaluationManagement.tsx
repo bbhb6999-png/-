@@ -21,7 +21,11 @@ import {
   Activity,
   Zap,
   Layout as LayoutIcon,
-  FileText
+  FileText,
+  GitCompare,
+  Tag,
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -48,12 +52,15 @@ interface EvaluationManagementProps {
   activeSubTab: string;
 }
 
-type ViewType = 'list' | 'taskDetail' | 'reportDetail';
+type ViewType = 'list' | 'taskDetail' | 'reportDetail' | 'versionDiff';
 
 export default function EvaluationManagement({ activeSubTab }: EvaluationManagementProps) {
   const [view, setView] = useState<ViewType>('list');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [taskModalConfig, setTaskModalConfig] = useState<{ open: boolean; task?: any; initialType?: string }>({ open: false });
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [versionDiffConfig, setVersionDiffConfig] = useState({ base: 'v1.2.0', target: 'v1.3.0' });
   
   // Filter States
   const [taskSearch, setTaskSearch] = useState('');
@@ -148,6 +155,148 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
   const handleUpdateTask = (updatedTask: any) => {
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
     setTaskModalConfig({ open: false });
+  };
+
+  const ReportModal = ({ onClose }: { onClose: () => void }) => {
+    const [template, setTemplate] = useState('detailed');
+    const [content, setContent] = useState(['overview', 'stats', 'results', 'problems']);
+    const [exportFormat, setExportFormat] = useState('pdf');
+
+    const templates = [
+      { id: 'simple', name: '简洁版', desc: '仅包含核心指标和结论' },
+      { id: 'detailed', name: '详细版', desc: '包含完整测试数据和分析' },
+      { id: 'executive', name: 'Executive版', desc: '面向管理层的高层级汇总' },
+      { id: 'compatibility', name: '兼容性分析', desc: '专注于版本间变更及影响' },
+    ];
+
+    const modules = [
+      { id: 'overview', name: '测试概述' },
+      { id: 'stats', name: '执行统计' },
+      { id: 'results', name: '详细结果' },
+      { id: 'problems', name: '问题汇总' },
+      { id: 'diff', name: '变更对比' },
+      { id: 'impact', name: '影响分析' },
+    ];
+
+    const handleGenerate = () => {
+      setGeneratingReport(true);
+      setTimeout(() => {
+        setGeneratingReport(false);
+        alert('报告生成成功！');
+        onClose();
+      }, 1500);
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[var(--bg-secondary)] w-full max-w-2xl rounded-2xl shadow-2xl border border-[var(--border-color)] overflow-hidden"
+        >
+          <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)]">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center">
+              <FileText className="w-5 h-5 mr-2 text-blue-500" /> 生成测试报告
+            </h3>
+            <button onClick={onClose} className="p-2 hover:bg-[var(--bg-secondary)] rounded-full text-[var(--text-secondary)]">
+              <Plus className="w-5 h-5 rotate-45" />
+            </button>
+          </div>
+          
+          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+            {/* Template Selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-[var(--text-primary)]">1. 选择报告模板</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {templates.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTemplate(t.id)}
+                    className={cn(
+                      "p-4 rounded-xl border text-left transition-all",
+                      template === t.id 
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/20" 
+                        : "border-[var(--border-color)] hover:border-blue-400"
+                    )}
+                  >
+                    <p className="text-sm font-bold mb-1">{t.name}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">{t.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-[var(--text-primary)]">2. 自定义报告内容</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {modules.map(m => (
+                  <label key={m.id} className="flex items-center p-3 border border-[var(--border-color)] rounded-lg cursor-pointer hover:bg-[var(--bg-primary)] transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={content.includes(m.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setContent([...content, m.id]);
+                        else setContent(content.filter(id => id !== m.id));
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded border-[var(--border-color)] focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-[var(--text-primary)]">{m.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Export Format */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-[var(--text-primary)]">3. 导出格式</label>
+              <div className="flex flex-wrap gap-4">
+                {['pdf', 'word', 'html'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setExportFormat(f)}
+                    className={cn(
+                      "px-6 py-2 rounded-lg border text-sm font-medium transition-all uppercase",
+                      exportFormat === f 
+                        ? "border-blue-500 bg-blue-600 text-white" 
+                        : "border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-primary)]"
+                    )}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-[var(--border-color)] flex justify-end space-x-3 bg-[var(--bg-primary)]">
+            <button 
+              onClick={onClose}
+              className="px-6 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)]"
+            >
+              取消
+            </button>
+            <button 
+              onClick={handleGenerate}
+              disabled={generatingReport || content.length === 0}
+              className="px-8 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/20 disabled:opacity-50 flex items-center"
+            >
+              {generatingReport ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  正在生成...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  立即生成并导出
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
   };
 
   // --- Sub-components ---
@@ -444,7 +593,18 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
 
   const renderTestReports = () => (
     <>
-      {renderHeader('测试报告')}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">测试报告</h2>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">评测管理 / 测试报告</p>
+        </div>
+        <button 
+          onClick={() => setReportModalOpen(true)}
+          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20 transition-all"
+        >
+          <Plus className="w-4 h-4 mr-2" /> 生成新报告
+        </button>
+      </div>
       {renderFilters(
         'report',
         ['UI测试', '接口测试', '性能测试'],
@@ -556,7 +716,26 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
 
   const renderInterfaceTest = () => (
     <>
-      {renderHeader('接口测试', () => setTaskModalConfig({ open: true, initialType: '接口测试' }))}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">接口测试</h2>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">评测管理 / 接口测试</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => setView('versionDiff')}
+            className="flex items-center px-4 py-2 border border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium transition-all"
+          >
+            <GitCompare className="w-4 h-4 mr-2" /> 多版本对比
+          </button>
+          <button 
+            onClick={() => setTaskModalConfig({ open: true, initialType: '接口测试' })}
+            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20 transition-all"
+          >
+            <Plus className="w-4 h-4 mr-2" /> 新增接口测试
+          </button>
+        </div>
+      </div>
       <div className="card overflow-hidden">
         <table className="w-full text-left">
           <thead>
@@ -603,6 +782,190 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
       </div>
     </>
   );
+
+  const renderVersionDiff = () => {
+    const diffData = [
+      { path: '/api/v1/user/profile', method: 'GET', type: 'modified', impact: 'low', description: '新增 optional 字段: bio' },
+      { path: '/api/v1/auth/logout', method: 'POST', type: 'added', impact: 'none', description: '新增登出接口' },
+      { path: '/api/v1/data/export', method: 'POST', type: 'deleted', impact: 'breaking', description: '接口已移除，请使用 /api/v2/export' },
+      { path: '/api/v1/face/verify', method: 'POST', type: 'modified', impact: 'breaking', description: '参数 face_id 变更为必填' },
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={() => setView('list')}
+            className="text-sm text-blue-500 hover:text-blue-600 flex items-center"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" /> 返回列表
+          </button>
+          <button 
+            onClick={() => setReportModalOpen(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center shadow-lg shadow-blue-500/20"
+          >
+            <FileText className="w-4 h-4 mr-2" /> 导出兼容性报告
+          </button>
+        </div>
+
+        {/* Version Config Card */}
+        <div className="card p-6">
+          <h3 className="text-lg font-bold mb-6 flex items-center">
+            <GitCompare className="w-5 h-5 mr-2 text-blue-500" /> 版本对比配置
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)]">
+                <div>
+                  <p className="text-xs text-[var(--text-secondary)] mb-1">基准版本 (Base)</p>
+                  <select 
+                    value={versionDiffConfig.base}
+                    onChange={(e) => setVersionDiffConfig({...versionDiffConfig, base: e.target.value})}
+                    className="bg-transparent font-bold text-[var(--text-primary)] outline-none cursor-pointer"
+                  >
+                    <option value="v1.1.0">v1.1.0</option>
+                    <option value="v1.2.0">v1.2.0</option>
+                  </select>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <Tag className="w-5 h-5 text-slate-500" />
+                </div>
+              </div>
+            </div>
+            <div className="hidden md:flex justify-center">
+              <ArrowRight className="w-6 h-6 text-[var(--text-secondary)]" />
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)]">
+                <div>
+                  <p className="text-xs text-[var(--text-secondary)] mb-1">对比版本 (Target)</p>
+                  <select 
+                    value={versionDiffConfig.target}
+                    onChange={(e) => setVersionDiffConfig({...versionDiffConfig, target: e.target.value})}
+                    className="bg-transparent font-bold text-[var(--text-primary)] outline-none cursor-pointer"
+                  >
+                    <option value="v1.3.0">v1.3.0</option>
+                    <option value="v1.4.0-beta">v1.4.0-beta</option>
+                  </select>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-blue-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Interface Change Detection */}
+        <div className="card overflow-hidden">
+          <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
+            <h4 className="text-sm font-semibold">接口变更检测</h4>
+            <div className="flex gap-4">
+              <span className="text-xs flex items-center"><div className="w-2 h-2 rounded-full bg-blue-500 mr-1.5" /> 修改</span>
+              <span className="text-xs flex items-center"><div className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" /> 新增</span>
+              <span className="text-xs flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 mr-1.5" /> 删除</span>
+            </div>
+          </div>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-[var(--bg-primary)] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
+                <th className="px-6 py-4 font-semibold">接口路径</th>
+                <th className="px-6 py-4 font-semibold">变更类型</th>
+                <th className="px-6 py-4 font-semibold">影响程度</th>
+                <th className="px-6 py-4 font-semibold">变更描述</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-color)]">
+              {diffData.map((item, i) => (
+                <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded mr-2">{item.method}</span>
+                      <span className="text-sm font-medium">{item.path}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
+                      item.type === 'modified' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                      item.type === 'added' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    )}>
+                      {item.type === 'modified' ? '修改' : item.type === 'added' ? '新增' : '删除'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <AlertTriangle className={cn(
+                        "w-4 h-4 mr-1.5",
+                        item.impact === 'breaking' ? "text-red-500" :
+                        item.impact === 'low' ? "text-orange-500" : "text-slate-400"
+                      )} />
+                      <span className={cn(
+                        "text-xs font-medium",
+                        item.impact === 'breaking' ? "text-red-600" :
+                        item.impact === 'low' ? "text-orange-600" : "text-slate-600"
+                      )}>
+                        {item.impact === 'breaking' ? '破坏性变更' : item.impact === 'low' ? '低风险' : '无影响'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{item.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Compatibility Analysis Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="card p-6 border-l-4 border-red-500">
+            <h4 className="text-sm font-semibold mb-2">破坏性变更</h4>
+            <p className="text-3xl font-bold text-red-500">2</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">需要立即更新客户端代码</p>
+          </div>
+          <div className="card p-6 border-l-4 border-orange-500">
+            <h4 className="text-sm font-semibold mb-2">向后兼容变更</h4>
+            <p className="text-3xl font-bold text-orange-500">1</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">建议在下个版本适配</p>
+          </div>
+          <div className="card p-6 border-l-4 border-emerald-500">
+            <h4 className="text-sm font-semibold mb-2">新增功能</h4>
+            <p className="text-3xl font-bold text-emerald-500">1</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">可供新业务使用</p>
+          </div>
+        </div>
+
+        {/* Recommendations Section */}
+        <div className="card p-6">
+          <h4 className="text-sm font-semibold mb-4 flex items-center">
+            <AlertCircle className="w-4 h-4 mr-2 text-blue-500" /> 兼容性建议
+          </h4>
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-900/20">
+              <p className="text-sm font-bold text-red-700 dark:text-red-400 mb-1">建议 1: 接口迁移</p>
+              <p className="text-xs text-red-600 dark:text-red-300/80">
+                由于 /api/v1/data/export 已被删除，建议所有客户端在 2026-06-01 前迁移至 /api/v2/export。
+                v2 接口提供了更高的性能和更多的导出格式支持。
+              </p>
+            </div>
+            <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/20">
+              <p className="text-sm font-bold text-orange-700 dark:text-orange-400 mb-1">建议 2: 参数适配</p>
+              <p className="text-xs text-orange-600 dark:text-orange-300/80">
+                /api/v1/face/verify 的 face_id 参数现在是必填项。请检查客户端调用逻辑，确保在发送请求前已获取有效的 face_id。
+              </p>
+            </div>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/20">
+              <p className="text-sm font-bold text-blue-700 dark:text-blue-400 mb-1">建议 3: 新功能试用</p>
+              <p className="text-xs text-blue-600 dark:text-blue-300/80">
+                新版本引入了 /api/v1/auth/logout 接口，建议客户端集成该接口以提升安全性，确保用户会话能被正确销毁。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderPerformanceTest = () => (
     <>
@@ -898,8 +1261,11 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
             <ArrowLeft className="w-4 h-4 mr-1" /> 返回列表
           </button>
           <div className="flex items-center space-x-2">
-            <button className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)] flex items-center">
-              <Download className="w-4 h-4 mr-2" /> 下载 PDF
+            <button 
+              onClick={() => setReportModalOpen(true)}
+              className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)] flex items-center"
+            >
+              <Download className="w-4 h-4 mr-2" /> 导出报告
             </button>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
               分享报告
@@ -1055,6 +1421,7 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
   const renderContent = () => {
     if (view === 'taskDetail') return renderTaskDetail();
     if (view === 'reportDetail') return renderReportDetail();
+    if (view === 'versionDiff') return renderVersionDiff();
 
     return (
       <>
@@ -1064,6 +1431,11 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
             onAdd={handleAddTask}
             onUpdate={handleUpdateTask}
             onClose={() => setTaskModalConfig({ open: false })}
+          />
+        )}
+        {reportModalOpen && (
+          <ReportModal 
+            onClose={() => setReportModalOpen(false)}
           />
         )}
         {(() => {
