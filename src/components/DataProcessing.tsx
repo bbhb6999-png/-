@@ -167,10 +167,60 @@ export default function DataProcessing({ activeSubTab }: DataProcessingProps) {
           <p className="text-sm text-[var(--text-secondary)] mt-1">管理与预览待处理的图片资源</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button className="flex items-center px-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-primary)] transition-all">
+          <button 
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const newImg: ImageData = {
+                    id: `IMG-${Date.now()}`,
+                    name: file.name,
+                    size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+                    resolution: '1920x1080', // Mock resolution
+                    uploadTime: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5),
+                    url: URL.createObjectURL(file)
+                  };
+                  setImages(prev => [newImg, ...prev]);
+                  alert('图片导入成功');
+                }
+              };
+              input.click();
+            }}
+            className="flex items-center px-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-primary)] transition-all"
+          >
             <Plus className="w-4 h-4 mr-2" /> 导入图片
           </button>
-          <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all">
+          <button 
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.multiple = true;
+              input.onchange = (e: any) => {
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  const newImages: ImageData[] = Array.from(files).map((f: any, idx) => {
+                    const file = f as File;
+                    return {
+                      id: `IMG-${Date.now()}-${idx}`,
+                      name: file.name,
+                      size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+                      resolution: '1920x1080',
+                      uploadTime: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5),
+                      url: URL.createObjectURL(file)
+                    };
+                  });
+                  setImages(prev => [...newImages, ...prev]);
+                  alert(`成功批量导入 ${newImages.length} 张图片`);
+                }
+              };
+              input.click();
+            }}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all"
+          >
             <Upload className="w-4 h-4 mr-2" /> 批量导入
           </button>
         </div>

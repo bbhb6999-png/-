@@ -1340,10 +1340,33 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         </div>
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => setDatasetModalConfig({ open: true })}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/20"
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.zip,.tar,.gz,.json';
+              input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                  alert(`数据集 ${file.name} 导入中...`);
+                  setTimeout(() => {
+                    const newDs: Dataset = {
+                      id: `DS-${Math.floor(Math.random() * 1000)}`,
+                      name: file.name.split('.')[0] + '-导入',
+                      type: 'image',
+                      taskIds: [],
+                      createdAt: new Date().toISOString().split('T')[0],
+                      dataCount: Math.floor(Math.random() * 1000) + 100
+                    };
+                    setDatasets(prev => [newDs, ...prev]);
+                    alert('导入成功');
+                  }, 1500);
+                }
+              };
+              input.click();
+            }}
+            className="flex items-center px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)] transition-all"
           >
-            <Plus className="w-4 h-4 mr-2" /> 新建数据集
+            <Upload className="w-4 h-4 mr-2" /> 数据集导入
           </button>
         </div>
       </div>
@@ -1375,7 +1398,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               }}
               className="flex items-center px-3 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium hover:bg-[var(--bg-primary)] disabled:opacity-50"
             >
-              <Download className="w-4 h-4 mr-2" /> 批量导出
+              <Download className="w-4 h-4 mr-2" /> 标准文件导出
             </button>
             <button 
               disabled={selectedDatasetIds.length === 0}

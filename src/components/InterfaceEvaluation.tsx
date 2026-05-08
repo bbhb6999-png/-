@@ -806,9 +806,6 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
             <h2 className="text-2xl font-bold text-[var(--text-primary)]">测试报告详情</h2>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)] flex items-center">
-              <Download className="w-4 h-4 mr-2" /> 导出报告 (PDF)
-            </button>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
               重新测试
             </button>
@@ -943,14 +940,6 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
           >
             <ArrowLeft className="w-4 h-4 mr-1" /> 返回列表
           </button>
-          <div className="flex items-center space-x-3">
-            <button 
-              onClick={() => setView('reportDetail')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center shadow-lg shadow-blue-500/20"
-            >
-              <FileText className="w-4 h-4 mr-2" /> 导出兼容性报告
-            </button>
-          </div>
         </div>
 
         {/* Version Config Card */}
