@@ -76,6 +76,14 @@ interface TestItem {
   description?: string;
 }
 
+const getRelativeDate = (daysAgo: number = 0, hoursAgo: number = 0, minsAgo: number = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  d.setHours(d.getHours() - hoursAgo);
+  d.setMinutes(d.getMinutes() - minsAgo);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
 const MOCK_RESULTS: TestResult[] = [
   {
     id: 'TR-001',
@@ -83,7 +91,7 @@ const MOCK_RESULTS: TestResult[] = [
     type: 'UI测试',
     taskName: '人脸识别实时分析任务 #001',
     status: 'success',
-    generationTime: '2026-03-01 10:00',
+    generationTime: getRelativeDate(0, 2, 0),
     duration: '120ms',
     successRate: 98.5,
     failureRate: 1.5,
@@ -103,7 +111,7 @@ const MOCK_RESULTS: TestResult[] = [
     type: 'UI测试',
     taskName: '人脸识别实时分析任务 #001',
     status: 'success',
-    generationTime: '2026-03-01 11:30',
+    generationTime: getRelativeDate(0, 0, 30),
     duration: '115ms',
     successRate: 99.2,
     failureRate: 0.8,
@@ -123,7 +131,7 @@ const MOCK_RESULTS: TestResult[] = [
     type: '性能测试',
     taskName: '车辆特征提取任务 #042',
     status: 'failed',
-    generationTime: '2026-03-01 09:15',
+    generationTime: getRelativeDate(0, 3, 0),
     duration: '450ms',
     successRate: 85.0,
     failureRate: 15.0,
@@ -598,13 +606,25 @@ export default function ResultVerification({ activeSubTab }: ResultVerificationP
       { name: '文本差异', value: 30, color: '#f59e0b' },
     ];
 
+    const getTrendDates = () => {
+      const dates = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(`${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      }
+      return dates;
+    };
+
+    const trendDates = getTrendDates();
+
     const trendData = [
-      { name: '02-24', diff: 12 },
-      { name: '02-25', diff: 15 },
-      { name: '02-26', diff: 8 },
-      { name: '02-27', diff: 18 },
-      { name: '02-28', diff: 14 },
-      { name: '03-01', diff: 10 },
+      { name: trendDates[0], diff: 12 },
+      { name: trendDates[1], diff: 15 },
+      { name: trendDates[2], diff: 8 },
+      { name: trendDates[3], diff: 18 },
+      { name: trendDates[4], diff: 14 },
+      { name: trendDates[5], diff: 10 },
     ];
 
     return (

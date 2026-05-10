@@ -61,18 +61,22 @@ type ViewState = 'list' | 'detail';
 
 // Mock data generator for real-time charts
 const generateRealTimeData = (count: number) => {
-  return Array.from({ length: count }).map((_, i) => ({
-    time: `${10 + Math.floor(i/60)}:${(i%60).toString().padStart(2, '0')}`,
-    cpu: Math.floor(Math.random() * 40) + 20,
-    memory: Math.floor(Math.random() * 30) + 40,
-    gpu: Math.floor(Math.random() * 50) + 10,
-    network: Math.floor(Math.random() * 100) + 50,
-    disk: Math.floor(Math.random() * 20) + 30,
-    throughput: Math.floor(Math.random() * 200) + 800,
-    latency: Math.floor(Math.random() * 50) + 100,
-    frameDrop: Math.random() * 2,
-    processed: Math.floor(Math.random() * 50) + 100,
-  }));
+  const now = new Date();
+  return Array.from({ length: count }).map((_, i) => {
+    const d = new Date(now.getTime() - (count - i) * 60000); // 1 minute per point
+    return {
+      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+      cpu: Math.floor(Math.random() * 40) + 20,
+      memory: Math.floor(Math.random() * 30) + 40,
+      gpu: Math.floor(Math.random() * 50) + 10,
+      network: Math.floor(Math.random() * 100) + 50,
+      disk: Math.floor(Math.random() * 20) + 30,
+      throughput: Math.floor(Math.random() * 200) + 800,
+      latency: Math.floor(Math.random() * 50) + 100,
+      frameDrop: Math.random() * 2,
+      processed: Math.floor(Math.random() * 50) + 100,
+    };
+  });
 };
 
 export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationProps) {
@@ -88,10 +92,16 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
   const [historyNodeFilter, setHistoryNodeFilter] = useState('所有节点');
 
   // Mock Data
+  const getFormattedDate = (minsAgo: number = 0) => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - minsAgo);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
   const HISTORY_DATA = [
-    { name: '人脸识别实时分析任务 #001', node: '服务器', cpu: '32%', mem: '45%', gpu: '28%', duration: '02:45:12', frameDrop: '0.42%', time: '2026-03-01 10:00' },
-    { name: '车辆特征提取任务 #042', node: '本机', cpu: '18%', mem: '32%', gpu: '12%', duration: '01:12:05', frameDrop: '0.15%', time: '2026-03-01 09:30' },
-    { name: '视频结构化处理任务 #108', node: '服务器', cpu: '54%', mem: '68%', gpu: '72%', duration: '05:20:44', frameDrop: '1.24%', time: '2026-02-28 14:20' },
+    { name: '人脸识别实时分析任务 #001', node: '服务器', cpu: '32%', mem: '45%', gpu: '28%', duration: '02:45:12', frameDrop: '0.42%', time: getFormattedDate(120) },
+    { name: '车辆特征提取任务 #042', node: '本机', cpu: '18%', mem: '32%', gpu: '12%', duration: '01:12:05', frameDrop: '0.15%', time: getFormattedDate(240) },
+    { name: '视频结构化处理任务 #108', node: '服务器', cpu: '54%', mem: '68%', gpu: '72%', duration: '05:20:44', frameDrop: '1.24%', time: getFormattedDate(1440) },
   ];
 
   const filteredHistory = useMemo(() => {
@@ -112,14 +122,8 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
         const last = prev[prev.length - 1];
         
         // Simple time increment for mock
-        const [h, m] = last.time.split(':').map(Number);
-        let nextM = m + 1;
-        let nextH = h;
-        if (nextM >= 60) {
-          nextM = 0;
-          nextH++;
-        }
-        const nextTime = `${nextH}:${nextM.toString().padStart(2, '0')}`;
+        const d = new Date();
+        const nextTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 
         newData.push({
           time: nextTime,
@@ -509,7 +513,7 @@ export default function ResourceEvaluation({ activeSubTab }: ResourceEvaluationP
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">执行时间</p>
-            <p className="text-sm text-[var(--text-primary)]">{selectedTask?.time || '2026-03-01 10:00'}</p>
+            <p className="text-sm text-[var(--text-primary)]">{selectedTask?.time || getFormattedDate(120)}</p>
           </div>
         </div>
       </div>

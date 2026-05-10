@@ -43,22 +43,37 @@ const STATS: SystemStat[] = [
   { label: '系统健康度', value: '98.5', unit: '%', trend: 'up', change: '+0.1%' },
 ];
 
+const getRelativeDate = (daysAgo: number = 0, hoursAgo: number = 0, minsAgo: number = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  d.setHours(d.getHours() - hoursAgo);
+  d.setMinutes(d.getMinutes() - minsAgo);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
 const RECENT_TASKS: Task[] = [
-  { id: 'T-1024', name: '人脸识别算法精度评测', type: '算法评测', status: 'running', progress: 65, creator: '张警官', createTime: '2026-03-01 10:00' },
-  { id: 'T-1023', name: '车辆特征提取性能测试', type: '性能测试', status: 'completed', progress: 100, creator: '李警官', createTime: '2026-03-01 09:30' },
-  { id: 'T-1022', name: '视频流接入稳定性校验', type: '接口评测', status: 'failed', progress: 42, creator: '王警官', createTime: '2026-03-01 08:15' },
-  { id: 'T-1021', name: '语义分割标注任务-03', type: '数据标注', status: 'pending', progress: 0, creator: '赵警官', createTime: '2026-02-28 17:45' },
+  { id: 'T-1024', name: '人脸识别算法精度评测', type: '算法评测', status: 'running', progress: 65, creator: '张警官', createTime: getRelativeDate(0, 0, 30) },
+  { id: 'T-1023', name: '车辆特征提取性能测试', type: '性能测试', status: 'completed', progress: 100, creator: '李警官', createTime: getRelativeDate(0, 1, 0) },
+  { id: 'T-1022', name: '视频流接入稳定性校验', type: '接口评测', status: 'failed', progress: 42, creator: '王警官', createTime: getRelativeDate(0, 2, 15) },
+  { id: 'T-1021', name: '语义分割标注任务-03', type: '数据标注', status: 'pending', progress: 0, creator: '赵警官', createTime: getRelativeDate(1, 0, 0) },
 ];
 
-const RESOURCE_DATA: ResourceUsage[] = [
-  { time: '00:00', cpu: 45, memory: 60, gpu: 30 },
-  { time: '04:00', cpu: 30, memory: 55, gpu: 20 },
-  { time: '08:00', cpu: 65, memory: 75, gpu: 55 },
-  { time: '12:00', cpu: 85, memory: 80, gpu: 90 },
-  { time: '16:00', cpu: 70, memory: 70, gpu: 65 },
-  { time: '20:00', cpu: 55, memory: 65, gpu: 40 },
-  { time: '23:59', cpu: 40, memory: 60, gpu: 35 },
-];
+const getResourceData = () => {
+  const data = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(d.getHours() - i * 4);
+    data.push({
+      time: `${String(d.getHours()).padStart(2, '0')}:00`,
+      cpu: Math.floor(Math.random() * 50) + 30,
+      memory: Math.floor(Math.random() * 40) + 40,
+      gpu: Math.floor(Math.random() * 60) + 20,
+    });
+  }
+  return data;
+};
+
+const RESOURCE_DATA: ResourceUsage[] = getResourceData();
 
 const QUICK_ENTRIES = [
   { label: '新建评测', icon: Plus, color: 'bg-blue-500', tab: 'evaluation', subTab: 'task-mgmt' },

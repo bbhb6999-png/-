@@ -71,21 +71,30 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
   const [reportTypeFilter, setReportTypeFilter] = useState('');
   const [reportResultFilter, setReportResultFilter] = useState('');
 
+  // Helper to get relative date
+  const getRelativeDate = (daysAgo: number = 0, hoursAgo: number = 0, minsAgo: number = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(d.getHours() - hoursAgo);
+    d.setMinutes(d.getMinutes() - minsAgo);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
   // Task State
   const [tasks, setTasks] = useState([
-    { id: 'TASK-001', name: '人脸识别精度测试', type: 'UI测试', target: 'FaceSDK-v2.1', status: 'completed', time: '2026-03-01 10:00', user: '张警官' },
-    { id: 'TASK-002', name: '车辆识别接口压力测试', type: '接口测试', target: 'VehicleAPI-v1.0', status: 'running', time: '2026-03-01 11:30', user: '李警官' },
-    { id: 'TASK-003', name: '视频流并发处理评测', type: '性能测试', target: 'StreamServer-v3', status: 'failed', time: '2026-03-01 09:15', user: '王警官' },
-    { id: 'TASK-004', name: '移动端UI兼容性测试', type: 'UI测试', target: 'MobileApp-v1.2', status: 'pending', time: '2026-03-01 14:00', user: '赵警官' },
+    { id: 'TASK-001', name: '人脸识别精度测试', type: 'UI测试', target: 'FaceSDK-v2.1', status: 'completed', time: getRelativeDate(0, 2, 30), user: '张警官' },
+    { id: 'TASK-002', name: '车辆识别接口压力测试', type: '接口测试', target: 'VehicleAPI-v1.0', status: 'running', time: getRelativeDate(0, 1, 15), user: '李警官' },
+    { id: 'TASK-003', name: '视频流并发处理评测', type: '性能测试', target: 'StreamServer-v3', status: 'failed', time: getRelativeDate(0, 3, 45), user: '王警官' },
+    { id: 'TASK-004', name: '移动端UI兼容性测试', type: 'UI测试', target: 'MobileApp-v1.2', status: 'pending', time: getRelativeDate(0, 0, 15), user: '赵警官' },
   ]);
 
   const [reports, setReports] = useState([
-    { id: 'REP-001', name: '人脸识别精度测试', type: 'UI测试', result: '通过', time: '2026-03-01 10:45' },
-    { id: 'REP-002', name: '车辆识别接口压力测试', type: '接口测试', result: '部分失败', time: '2026-03-01 12:30' },
-    { id: 'REP-003', name: '视频流并发处理评测', type: '性能测试', result: '失败', time: '2026-03-01 09:45' },
-    { id: 'REP-004', name: '仪表盘组件渲染测试', type: 'UI测试', result: '通过', time: '2026-03-01 11:30' },
-    { id: 'REP-005', name: '车辆轨迹查询API', type: '接口测试', result: '失败', time: '2026-03-01 13:00' },
-    { id: 'REP-006', name: '数据库写入性能评测', type: '性能测试', result: '通过', time: '2026-03-01 15:00' },
+    { id: 'REP-001', name: '人脸识别精度测试', type: 'UI测试', result: '通过', time: getRelativeDate(0, 2, 45) },
+    { id: 'REP-002', name: '车辆识别接口压力测试', type: '接口测试', result: '部分失败', time: getRelativeDate(0, 1, 30) },
+    { id: 'REP-003', name: '视频流并发处理评测', type: '性能测试', result: '失败', time: getRelativeDate(0, 3, 0) },
+    { id: 'REP-004', name: '仪表盘组件渲染测试', type: 'UI测试', result: '通过', time: getRelativeDate(0, 0, 45) },
+    { id: 'REP-005', name: '车辆轨迹查询API', type: '接口测试', result: '失败', time: getRelativeDate(0, 1, 15) },
+    { id: 'REP-006', name: '数据库写入性能评测', type: '性能测试', result: '通过', time: getRelativeDate(0, 4, 30) },
   ]);
 
   const filteredTasks = React.useMemo(() => {
@@ -1033,7 +1042,7 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
                 <p className="text-xs text-[var(--text-secondary)]">创建时间</p>
                 <div className="flex items-center">
                   <Calendar className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-                  <p className="text-sm font-medium text-[var(--text-primary)]">2026-03-01 10:00:00</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{getRelativeDate(0, 1, 0)}</p>
                 </div>
               </div>
               <div className="space-y-1">
@@ -1132,14 +1141,26 @@ export default function EvaluationManagement({ activeSubTab }: EvaluationManagem
       { name: '失败', value: 8, color: '#ef4444' },
     ];
 
+    const getTrendTimes = () => {
+      const times = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - i * 10);
+        times.push(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+      }
+      return times;
+    };
+
+    const trendTimes = getTrendTimes();
+
     const trendData = [
-      { time: 'T1', timeCost: 120, successRate: 85 },
-      { time: 'T2', timeCost: 132, successRate: 88 },
-      { time: 'T3', timeCost: 101, successRate: 92 },
-      { time: 'T4', timeCost: 134, successRate: 90 },
-      { time: 'T5', timeCost: 90, successRate: 95 },
-      { time: 'T6', timeCost: 230, successRate: 82 },
-      { time: 'T7', timeCost: 210, successRate: 89 },
+      { time: trendTimes[0], timeCost: 120, successRate: 85 },
+      { time: trendTimes[1], timeCost: 132, successRate: 88 },
+      { time: trendTimes[2], timeCost: 101, successRate: 92 },
+      { time: trendTimes[3], timeCost: 134, successRate: 90 },
+      { time: trendTimes[4], timeCost: 90, successRate: 95 },
+      { time: trendTimes[5], timeCost: 230, successRate: 82 },
+      { time: trendTimes[6], timeCost: 210, successRate: 89 },
     ];
 
     const renderUITestReport = () => (

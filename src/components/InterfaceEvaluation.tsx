@@ -69,11 +69,20 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
   const [apiSearch, setApiSearch] = useState('');
   const [apiStatusFilter, setApiStatusFilter] = useState('所有状态');
 
+  // Helper to get relative date
+  const getRelativeDate = (daysAgo: number = 0, hoursAgo: number = 0, minsAgo: number = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(d.getHours() - hoursAgo);
+    d.setMinutes(d.getMinutes() - minsAgo);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
   // Mock Data
   const API_TESTS = [
-    { name: '人脸检测接口功能测试', url: '/api/v1/face/detect', method: 'POST', status: 'success', time: '2026-03-01 10:00' },
-    { name: '车辆识别接口连通性', url: '/api/v1/vehicle/identify', method: 'GET', status: 'failed', time: '2026-03-01 11:30' },
-    { name: '轨迹查询接口性能预检', url: '/api/v1/track/query', method: 'POST', status: 'none', time: '2026-03-01 14:20' },
+    { name: '人脸检测接口功能测试', url: '/api/v1/face/detect', method: 'POST', status: 'success', time: getRelativeDate(0, 2, 30) },
+    { name: '车辆识别接口连通性', url: '/api/v1/vehicle/identify', method: 'GET', status: 'failed', time: getRelativeDate(0, 1, 15) },
+    { name: '轨迹查询接口性能预检', url: '/api/v1/track/query', method: 'POST', status: 'none', time: getRelativeDate(0, 3, 45) },
   ];
 
   const filteredAPITests = React.useMemo(() => {
@@ -266,8 +275,8 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
             {[
-              { name: 'FaceAPI 多版本兼容性', api: '人脸检测接口', versions: 3, status: 'success', time: '2026-02-28' },
-              { name: 'VehicleAPI 升级回归测试', api: '车辆识别接口', versions: 2, status: 'running', time: '2026-03-01' },
+              { name: 'FaceAPI 多版本兼容性', api: '人脸检测接口', versions: 3, status: 'success', time: getRelativeDate(12) },
+              { name: 'VehicleAPI 升级回归测试', api: '车辆识别接口', versions: 2, status: 'running', time: getRelativeDate(1) },
             ].map((item, i) => (
               <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
                 <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{item.name}</td>
@@ -292,10 +301,10 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
 
   const renderProtocolList = () => {
     const protocols = [
-      { name: 'HTTPS 安全协议适配', api: '人脸检测接口', protocol: 'HTTPS', status: 'success', time: '2026-02-25' },
-      { name: 'HTTP 降级兼容测试', api: '车辆识别接口', protocol: 'HTTP', status: 'none', time: '2026-03-01' },
-      { name: 'WebSocket 双向通信测试', api: '实时视频流推送', protocol: 'WS', status: 'running', time: '2026-03-02' },
-      { name: 'gRPC 接口性能评测', api: '特征向量检索服务', protocol: 'gRPC', status: 'success', time: '2026-03-03' },
+      { name: 'HTTPS 安全协议适配', api: '人脸检测接口', protocol: 'HTTPS', status: 'success', time: getRelativeDate(15) },
+      { name: 'HTTP 降级兼容测试', api: '车辆识别接口', protocol: 'HTTP', status: 'none', time: getRelativeDate(1) },
+      { name: 'WebSocket 双向通信测试', api: '实时视频流推送', protocol: 'WS', status: 'running', time: getRelativeDate(0, 5) },
+      { name: 'gRPC 接口性能评测', api: '特征向量检索服务', protocol: 'gRPC', status: 'success', time: getRelativeDate(0, 10) },
     ];
 
     const handleAutoRecognize = () => {
@@ -782,13 +791,25 @@ export default function InterfaceEvaluation({ activeSubTab }: InterfaceEvaluatio
   // --- Report Detail Page Render ---
 
   const renderReportDetail = () => {
+    const getTrendTimes = () => {
+      const times = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(d.getHours() - i);
+        times.push(`${String(d.getHours()).padStart(2, '0')}:00`);
+      }
+      return times;
+    };
+
+    const trendTimes = getTrendTimes();
+
     const timeData = [
-      { time: '09:00', latency: 120 },
-      { time: '10:00', latency: 142 },
-      { time: '11:00', latency: 135 },
-      { time: '12:00', latency: 156 },
-      { time: '13:00', latency: 148 },
-      { time: '14:00', latency: 130 },
+      { time: trendTimes[0], latency: 120 },
+      { time: trendTimes[1], latency: 142 },
+      { time: trendTimes[2], latency: 135 },
+      { time: trendTimes[3], latency: 156 },
+      { time: trendTimes[4], latency: 148 },
+      { time: trendTimes[5], latency: 130 },
     ];
 
     const pieData = [
