@@ -601,6 +601,31 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           >
             <Trash2 className="w-5 h-5" />
           </button>
+          <button 
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.multiple = true;
+              input.onchange = (e: any) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                  const newFiles = files.map((file: any, idx) => ({ 
+                    id: Date.now() + idx, 
+                    name: file.name, 
+                    status: 'pending' 
+                  }));
+                  setImageFiles(prev => [...prev, ...newFiles]);
+                  alert(`成功导入 ${files.length} 张图片`);
+                }
+              };
+              input.click();
+            }}
+            className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"
+            title="导入图片"
+          >
+            <Upload className="w-5 h-5" />
+          </button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
           <button className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]">
             <Undo2 className="w-5 h-5" />
@@ -627,7 +652,21 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           >
             <BarChart3 className="w-5 h-5" />
           </button>
-          <button className="flex items-center px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+          <button 
+            onClick={() => setExportDatasetModalConfig({ 
+              open: true, 
+              datasets: datasets.filter(ds => ds.taskIds.includes(selectedItem?.id)) 
+            })}
+            className="flex items-center px-4 py-1.5 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50"
+          >
+            <FileOutput className="w-4 h-4 mr-2" /> 导出标注
+          </button>
+          <button 
+            onClick={() => {
+              alert('标注已保存成功');
+            }}
+            className="flex items-center px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
             <Save className="w-4 h-4 mr-2" /> 保存标注
           </button>
         </div>
@@ -968,6 +1007,32 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             </div>
             <button className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"><MousePointer2 className="w-5 h-5" /></button>
             <button className="p-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 rounded-lg"><Square className="w-5 h-5" /></button>
+            <button 
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'video/*';
+                input.multiple = true;
+                input.onchange = (e: any) => {
+                  const newFiles = Array.from(e.target.files).map((file: any) => ({
+                    id: Date.now() + Math.random(),
+                    taskId: selectedItem.id,
+                    name: file.name,
+                    status: 'pending',
+                    extractStatus: 'pending',
+                    strategy: null,
+                    totalFrames: 0
+                  }));
+                  setVideoFiles(prev => [...prev, ...newFiles]);
+                  alert(`成功导入 ${newFiles.length} 个视频，请返回详情页进行抽帧配置`);
+                };
+                input.click();
+              }}
+              className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"
+              title="导入视频"
+            >
+              <Upload className="w-5 h-5" />
+            </button>
             <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
             <span className="text-xs font-medium text-[var(--text-primary)]">帧号: {currentFrameIndex + 1} / {totalFrames}</span>
           </div>
@@ -989,9 +1054,18 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               <BarChart3 className="w-5 h-5" />
             </button>
             <button 
+              onClick={() => setExportDatasetModalConfig({ 
+                open: true, 
+                datasets: datasets.filter(ds => ds.taskIds.includes(selectedItem?.id)) 
+              })}
+              className="px-4 py-1.5 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 flex items-center"
+            >
+              <FileOutput className="w-4 h-4 mr-2" /> 导出标注
+            </button>
+            <button 
               onClick={() => {
                 setVideoFiles(prev => prev.map(f => f.id === selectedVideo.id ? { ...f, status: 'completed' } : f));
-                alert('标注已保存');
+                alert('标注已保存成功');
               }}
               className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
             >
@@ -1669,11 +1743,29 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         };
         setExportHistory(prev => [newRecord, ...prev]);
 
-        // Simulate completion
+        // Generate and trigger download
+        const annotationContent = format === 'YOLO' 
+          ? `0 0.5 0.5 0.2 0.2\n1 0.3 0.4 0.1 0.1` 
+          : format === 'Pascal VOC'
+          ? `<annotation>\n  <folder>images</folder>\n  <filename>${ds.name}_export.jpg</filename>\n  <object>\n    <name>person</name>\n    <bndbox>\n      <xmin>100</xmin>\n      <ymin>100</ymin>\n      <xmax>200</xmax>\n      <ymax>200</ymax>\n    </bndbox>\n  </object>\n</annotation>`
+          : `{\n  "info": { "description": "Exported from AI Scenario Evaluation Platform" },\n  "annotations": []\n}`;
+
+        const blob = new Blob([annotationContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${ds.name}_${format.replace(' ', '_')}_export.${format === 'Pascal VOC' ? 'xml' : format === 'YOLO' ? 'txt' : 'json'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Simulate completion in history
         setTimeout(() => {
-          setExportHistory(prev => prev.map(r => r.id === newRecord.id ? { ...r, status: 'completed', downloadUrl: '#' } : r));
-        }, 3000);
+          setExportHistory(prev => prev.map(r => r.id === newRecord.id ? { ...r, status: 'completed', downloadUrl: url } : r));
+        }, 1500);
       });
+      alert('正在导出标注文件...');
       onClose();
     };
 
