@@ -88,36 +88,53 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [vidSearch, setVidSearch] = useState('');
   const [vidStatusFilter, setVidStatusFilter] = useState('所有状态');
 
-  // Mock Data - Changed to Tasks (Datasets)
-  const [imageTasks, setImageTasks] = useState([
+  // Persistence Helpers
+  const STORAGE_KEYS = {
+    IMAGE_TASKS: 'as-eval-image-tasks',
+    VIDEO_TASKS: 'as-eval-video-tasks',
+    DATASETS: 'as-eval-datasets',
+    EXPORT_HISTORY: 'as-eval-export-history',
+    IMAGE_FILES: 'as-eval-image-files',
+    VIDEO_FILES: 'as-eval-video-files',
+    ANNOTATIONS: 'as-eval-annotations',
+    LABELS: 'as-eval-labels'
+  };
+
+  const getSavedData = <T,>(key: string, defaultValue: T): T => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : defaultValue;
+    } catch (e) {
+      console.error(`Error loading ${key} from localStorage`, e);
+      return defaultValue;
+    }
+  };
+
+  // State Definitions with Persistence
+  const [imageTasks, setImageTasks] = useState(() => getSavedData(STORAGE_KEYS.IMAGE_TASKS, [
     { id: 'IMG-TASK-001', name: '人脸识别评测集', total: 500, completed: 420, status: 'annotating', time: '2026-03-01 10:00' },
     { id: 'IMG-TASK-002', name: '车辆特征库', total: 1000, completed: 1000, status: 'completed', time: '2026-03-01 10:05' },
     { id: 'IMG-TASK-003', name: '行人属性标注', total: 200, completed: 0, status: 'pending', time: '2026-03-01 10:10' },
-  ]);
+  ]));
 
-  const [videoTasks, setVideoTasks] = useState([
+  const [videoTasks, setVideoTasks] = useState(() => getSavedData(STORAGE_KEYS.VIDEO_TASKS, [
     { id: 'VID-TASK-001', name: '交通违法行为识别', total: 50, completed: 12, status: 'annotating', extractStatus: 'partial', time: '2026-03-01 09:00' },
     { id: 'VID-TASK-002', name: '安防监控异常检测', total: 20, completed: 20, status: 'completed', extractStatus: 'completed', time: '2026-03-01 11:15' },
-  ]);
+  ]));
 
-  const [datasets, setDatasets] = useState<Dataset[]>([
+  const [datasets, setDatasets] = useState<Dataset[]>(() => getSavedData(STORAGE_KEYS.DATASETS, [
     { id: 'DS-001', name: '标准人脸库-V1', type: 'image', taskIds: ['IMG-TASK-001'], createdAt: '2026-02-15', dataCount: 5000 },
     { id: 'DS-002', name: '城市交通监控-夜间', type: 'video', taskIds: ['VID-TASK-001'], createdAt: '2026-02-20', dataCount: 1200 },
     { id: 'DS-003', name: '违停车辆抓拍集', type: 'image', taskIds: ['IMG-TASK-002'], createdAt: '2026-03-01', dataCount: 800 },
     { id: 'DS-004', name: '安防监控异常检测集', type: 'video', taskIds: ['VID-TASK-002'], createdAt: '2026-03-02', dataCount: 20 },
-  ]);
+  ]));
 
-  const [exportHistory, setExportHistory] = useState<ExportRecord[]>([
+  const [exportHistory, setExportHistory] = useState<ExportRecord[]>(() => getSavedData(STORAGE_KEYS.EXPORT_HISTORY, [
     { id: 'EXP-001', datasetName: '标准人脸库-V1', format: 'COCO', status: 'completed', time: '2026-03-03 10:00', downloadUrl: '#' },
     { id: 'EXP-002', datasetName: '违停车辆抓拍集', format: 'YOLO', status: 'processing', time: '2026-03-03 11:30' },
-  ]);
+  ]));
 
-  const [datasetModalConfig, setDatasetModalConfig] = useState<{ open: boolean; dataset?: Dataset }>({ open: false });
-  const [exportDatasetModalConfig, setExportDatasetModalConfig] = useState<{ open: boolean; datasets: Dataset[] }>({ open: false, datasets: [] });
-
-  const [importModalConfig, setImportModalConfig] = useState<{ open: boolean; type?: 'image' | 'video' }>({ open: false });
-  const [statsModalConfig, setStatsModalConfig] = useState<{ open: boolean; task?: any }>({ open: false });
-  const [imageFiles, setImageFiles] = useState([
+  const [imageFiles, setImageFiles] = useState(() => getSavedData(STORAGE_KEYS.IMAGE_FILES, [
     { id: 1, name: 'IMG_001.jpg', status: 'completed' },
     { id: 2, name: 'IMG_002.jpg', status: 'completed' },
     { id: 3, name: 'IMG_003.jpg', status: 'pending' },
@@ -126,23 +143,53 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     { id: 6, name: 'IMG_006.jpg', status: 'pending' },
     { id: 7, name: 'IMG_007.jpg', status: 'pending' },
     { id: 8, name: 'IMG_008.jpg', status: 'pending' },
-  ]);
+  ]));
 
-  const [videoFiles, setVideoFiles] = useState([
+  const [videoFiles, setVideoFiles] = useState(() => getSavedData(STORAGE_KEYS.VIDEO_FILES, [
     { id: 1, taskId: 'VID-TASK-001', name: 'VIDEO_001.mp4', status: 'completed', extractStatus: 'ready', strategy: 'fps', fps: 5, totalFrames: 120 },
     { id: 2, taskId: 'VID-TASK-001', name: 'VIDEO_002.mp4', status: 'pending', extractStatus: 'pending', strategy: null, totalFrames: 0 },
     { id: 3, taskId: 'VID-TASK-001', name: 'VIDEO_003.mp4', status: 'pending', extractStatus: 'extracting', strategy: 'interval', interval: 10, totalFrames: 45 },
     { id: 4, taskId: 'VID-TASK-002', name: 'MONITOR_001.mp4', status: 'completed', extractStatus: 'ready', strategy: 'fps', fps: 10, totalFrames: 300 },
     { id: 5, taskId: 'VID-TASK-002', name: 'MONITOR_002.mp4', status: 'completed', extractStatus: 'ready', strategy: 'total', total: 100, totalFrames: 100 },
-  ]);
+  ]));
+
+  const [annotations, setAnnotations] = useState<Record<string, Rect[]>>(() => getSavedData(STORAGE_KEYS.ANNOTATIONS, {
+    'img_0': [
+      { id: '1', x: 100, y: 150, width: 200, height: 150, label: '人脸', color: '#3b82f6' },
+      { id: '2', x: 400, y: 300, width: 120, height: 80, label: '车辆', color: '#10b981' },
+    ]
+  }));
+
+  const [labels, setLabels] = useState(() => getSavedData(STORAGE_KEYS.LABELS, [
+    { name: '人脸', color: '#3b82f6' },
+    { name: '车辆', color: '#10b981' },
+    { name: '车牌', color: '#f59e0b' },
+    { name: '行人', color: '#ef4444' },
+  ]));
+
+  // Auto-save Effects
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.IMAGE_TASKS, JSON.stringify(imageTasks)); }, [imageTasks]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.VIDEO_TASKS, JSON.stringify(videoTasks)); }, [videoTasks]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DATASETS, JSON.stringify(datasets)); }, [datasets]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.EXPORT_HISTORY, JSON.stringify(exportHistory)); }, [exportHistory]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.IMAGE_FILES, JSON.stringify(imageFiles)); }, [imageFiles]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.VIDEO_FILES, JSON.stringify(videoFiles)); }, [videoFiles]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.ANNOTATIONS, JSON.stringify(annotations)); }, [annotations]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.LABELS, JSON.stringify(labels)); }, [labels]);
+
+  const [datasetModalConfig, setDatasetModalConfig] = useState<{ open: boolean; dataset?: Dataset }>({ open: false });
+  const [exportDatasetModalConfig, setExportDatasetModalConfig] = useState<{ open: boolean; datasets: Dataset[] }>({ open: false, datasets: [] });
+
+  const [importModalConfig, setImportModalConfig] = useState<{ open: boolean; type?: 'image' | 'video' }>({ open: false });
+  const [statsModalConfig, setStatsModalConfig] = useState<{ open: boolean; task?: any }>({ open: false });
 
   const currentTaskFiles = React.useMemo(() => {
     if (!selectedItem) return [];
-    return videoFiles.filter(f => f.taskId === selectedItem.id);
+    return videoFiles.filter((f: any) => f.taskId === selectedItem.id);
   }, [videoFiles, selectedItem]);
 
   const filteredImageTasks = React.useMemo(() => {
-    return imageTasks.filter(task => {
+    return imageTasks.filter((task: any) => {
       const matchesSearch = task.name.toLowerCase().includes(imgSearch.toLowerCase()) || 
                            task.id.toLowerCase().includes(imgSearch.toLowerCase());
       const statusMap: Record<string, string> = {
@@ -156,7 +203,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   }, [imageTasks, imgSearch, imgStatusFilter]);
 
   const filteredVideoTasks = React.useMemo(() => {
-    return videoTasks.filter(task => {
+    return videoTasks.filter((task: any) => {
       const matchesSearch = task.name.toLowerCase().includes(vidSearch.toLowerCase()) ||
                            task.id.toLowerCase().includes(vidSearch.toLowerCase());
       const statusMap: Record<string, string> = {
@@ -169,13 +216,6 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     });
   }, [videoTasks, vidSearch, vidStatusFilter]);
   
-  // Editor State
-  const [annotations, setAnnotations] = useState<Record<string, Rect[]>>({
-    'img_0': [
-      { id: '1', x: 100, y: 150, width: 200, height: 150, label: '人脸', color: '#3b82f6' },
-      { id: '2', x: 400, y: 300, width: 120, height: 80, label: '车辆', color: '#10b981' },
-    ]
-  });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
@@ -193,12 +233,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [selectedRectId, setSelectedRectId] = useState<string | null>(null);
   const [tool, setTool] = useState<'select' | 'rect'>('select');
   const [zoom, setZoom] = useState(100);
-  const [labels, setLabels] = useState([
-    { name: '人脸', color: '#3b82f6' },
-    { name: '车辆', color: '#10b981' },
-    { name: '车牌', color: '#f59e0b' },
-    { name: '行人', color: '#ef4444' },
-  ]);
+
   const [activeLabel, setActiveLabel] = useState('人脸');
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -1414,6 +1449,12 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         </div>
         <div className="flex items-center space-x-2">
           <button 
+            onClick={() => setDatasetModalConfig({ open: true })}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all"
+          >
+            <Plus className="w-4 h-4 mr-2" /> 新建数据集
+          </button>
+          <button 
             onClick={() => {
               const input = document.createElement('input');
               input.type = 'file';
@@ -1613,6 +1654,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     const [type, setType] = useState(config.dataset?.type || 'image');
     const [isDragging, setIsDragging] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDrop = (e: React.DragEvent) => {
       e.preventDefault();
@@ -1626,6 +1668,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       e.preventDefault();
       if (config.dataset) {
         setDatasets(prev => prev.map(ds => ds.id === config.dataset.id ? { ...ds, name, type } : ds));
+        alert('数据集更新成功');
       } else {
         const newDs: Dataset = {
           id: `DS-${Math.floor(Math.random() * 1000)}`,
@@ -1633,9 +1676,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           type,
           taskIds: [],
           createdAt: new Date().toISOString().split('T')[0],
-          dataCount: files.length > 0 ? 120 : 0
+          dataCount: files.length || Math.floor(Math.random() * 500) + 100 // Fallback if no files selected but name entered
         };
         setDatasets([newDs, ...datasets]);
+        alert(`数据集创建成功，共包含 ${newDs.dataCount} 个文件`);
       }
       onClose();
     };
@@ -1691,25 +1735,46 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
                     className={cn(
                       "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer",
                       isDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10" : "border-[var(--border-color)] hover:border-blue-400 hover:bg-[var(--bg-primary)]"
                     )}
                   >
+                    <input 
+                      type="file"
+                      multiple
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setFiles(Array.from(e.target.files));
+                        }
+                      }}
+                      className="hidden"
+                      accept={type === 'image' ? "image/*,.zip,.tar" : "video/*,.zip,.tar"}
+                    />
                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mb-4">
                       <Upload className="w-6 h-6" />
                     </div>
                     <p className="text-sm font-medium">点击或拖拽文件到此处上传</p>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">支持 .zip, .tar, .json, .xml 等格式</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">支持图片/视频文件或压缩包</p>
                     
                     {files.length > 0 && (
-                      <div className="mt-4 w-full bg-[var(--bg-primary)] rounded-lg p-3 border border-[var(--border-color)]">
+                      <div className="mt-4 w-full bg-[var(--bg-primary)] rounded-lg p-3 border border-[var(--border-color)]" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium truncate max-w-[200px]">{files[0].name}</span>
-                          <span className="text-[10px] text-[var(--text-secondary)]">{(files[0].size / 1024 / 1024).toFixed(2)} MB</span>
+                          <span className="text-xs font-medium truncate max-w-[200px]">{files.length} 个文件已选择</span>
+                          <span className="text-[10px] text-[var(--text-secondary)]">{(files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
                         <div className="mt-2 h-1 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div className="h-full bg-blue-500 w-full" />
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {files.slice(0, 3).map((f, i) => (
+                            <div key={i} className="text-[10px] text-[var(--text-secondary)] truncate flex items-center">
+                              <CheckCircle2 className="w-2.5 h-2.5 mr-1 text-emerald-500" /> {f.name}
+                            </div>
+                          ))}
+                          {files.length > 3 && <div className="text-[10px] text-[var(--text-secondary)]">...以及另外 {files.length - 3} 个文件</div>}
                         </div>
                       </div>
                     )}
@@ -2249,8 +2314,9 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             config={importModalConfig}
             onClose={() => setImportModalConfig({ open: false })}
             onImport={(data) => {
+              const newTaskId = `${importModalConfig.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`;
               const newTask = {
-                id: `${importModalConfig.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`,
+                id: newTaskId,
                 name: data.name,
                 total: data.fileCount || 100,
                 completed: 0,
@@ -2258,11 +2324,22 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 extractStatus: importModalConfig.type === 'video' ? 'pending' : undefined,
                 time: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5)
               };
+              
               if (importModalConfig.type === 'image') {
                 setImageTasks([newTask, ...imageTasks]);
               } else {
                 setVideoTasks([newTask, ...videoTasks]);
               }
+
+              // Link task to dataset
+              if (data.datasetId) {
+                setDatasets(prev => prev.map(ds => 
+                  ds.id === data.datasetId 
+                    ? { ...ds, taskIds: [...ds.taskIds, newTaskId] } 
+                    : ds
+                ));
+              }
+              alert(`成功创建标注任务: ${data.name}`);
             }}
           />
         )}
