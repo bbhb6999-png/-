@@ -1454,35 +1454,6 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           >
             <Plus className="w-4 h-4 mr-2" /> 新建数据集
           </button>
-          <button 
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = '.zip,.tar,.gz,.json';
-              input.onchange = (e: any) => {
-                const file = e.target.files[0];
-                if (file) {
-                  alert(`数据集 ${file.name} 导入中...`);
-                  setTimeout(() => {
-                    const newDs: Dataset = {
-                      id: `DS-${Math.floor(Math.random() * 1000)}`,
-                      name: file.name.split('.')[0] + '-导入',
-                      type: 'image',
-                      taskIds: [],
-                      createdAt: new Date().toISOString().split('T')[0],
-                      dataCount: Math.floor(Math.random() * 1000) + 100
-                    };
-                    setDatasets(prev => [newDs, ...prev]);
-                    alert('导入成功');
-                  }, 1500);
-                }
-              };
-              input.click();
-            }}
-            className="flex items-center px-4 py-2 border border-[var(--border-color)] rounded-lg text-sm font-medium hover:bg-[var(--bg-secondary)] transition-all"
-          >
-            <Upload className="w-4 h-4 mr-2" /> 数据集导入
-          </button>
         </div>
       </div>
 
@@ -1518,9 +1489,20 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             <button 
               disabled={selectedDatasetIds.length === 0}
               onClick={() => {
-                if (confirm(`确定要删除选中的 ${selectedDatasetIds.length} 个数据集吗？`)) {
-                  setDatasets(prev => prev.filter(ds => !selectedDatasetIds.includes(ds.id)));
-                  setSelectedDatasetIds([]);
+                const selectedDatasets = datasets.filter(ds => selectedDatasetIds.includes(ds.id));
+                const deletable = selectedDatasets.filter(ds => ds.taskIds.length === 0);
+                const undeletable = selectedDatasets.filter(ds => ds.taskIds.length > 0);
+                
+                if (undeletable.length > 0) {
+                  alert(`选中的数据集项中有 ${undeletable.length} 个已关联标注任务，无法删除。只能删除未关联任务的数据集。`);
+                }
+                
+                if (deletable.length > 0) {
+                  if (confirm(`确定要删除选中的 ${deletable.length} 个未关联任务的数据集吗？`)) {
+                    const deletableIds = deletable.map(ds => ds.id);
+                    setDatasets(prev => prev.filter(ds => !deletableIds.includes(ds.id)));
+                    setSelectedDatasetIds(prev => prev.filter(id => !deletableIds.includes(id)));
+                  }
                 }
               }}
               className="flex items-center px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 disabled:opacity-50"
@@ -1630,11 +1612,19 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                       </button>
                       <button 
                         onClick={() => {
+                          if (ds.taskIds.length > 0) {
+                            alert('该数据集已关联标注任务，无法删除。请先删除相关标注任务后再尝试。');
+                            return;
+                          }
                           if (confirm('确定要删除该数据集吗？')) {
                             setDatasets(prev => prev.filter(item => item.id !== ds.id));
                           }
                         }}
-                        className="text-xs font-medium text-red-500 hover:text-red-600"
+                        className={cn(
+                          "text-xs font-medium transition-colors",
+                          ds.taskIds.length > 0 ? "text-slate-300 cursor-not-allowed" : "text-red-500 hover:text-red-600"
+                        )}
+                        title={ds.taskIds.length > 0 ? "已关联标注任务，无法删除" : "删除数据集"}
                       >
                         删除
                       </button>
