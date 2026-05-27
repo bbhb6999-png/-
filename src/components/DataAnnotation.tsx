@@ -112,21 +112,21 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
 
   // State Definitions with Persistence
   const [imageTasks, setImageTasks] = useState(() => getSavedData(STORAGE_KEYS.IMAGE_TASKS, [
-    { id: 'IMG-TASK-001', name: '人脸识别评测集', total: 500, completed: 420, status: 'annotating', time: '2026-03-01 10:00' },
-    { id: 'IMG-TASK-002', name: '车辆特征库', total: 1000, completed: 1000, status: 'completed', time: '2026-03-01 10:05' },
-    { id: 'IMG-TASK-003', name: '行人属性标注', total: 200, completed: 0, status: 'pending', time: '2026-03-01 10:10' },
+    { id: 'IMG-TASK-001', name: '人脸识别评测集', total: 5, completed: 3, status: 'annotating', time: '2026-03-01 10:00' },
+    { id: 'IMG-TASK-002', name: '车辆特征库', total: 3, completed: 3, status: 'completed', time: '2026-03-01 10:05' },
+    { id: 'IMG-TASK-003', name: '行人属性标注', total: 3, completed: 0, status: 'pending', time: '2026-03-01 10:10' },
   ]));
 
   const [videoTasks, setVideoTasks] = useState(() => getSavedData(STORAGE_KEYS.VIDEO_TASKS, [
-    { id: 'VID-TASK-001', name: '交通违法行为识别', total: 50, completed: 12, status: 'annotating', extractStatus: 'partial', time: '2026-03-01 09:00' },
-    { id: 'VID-TASK-002', name: '安防监控异常检测', total: 20, completed: 20, status: 'completed', extractStatus: 'completed', time: '2026-03-01 11:15' },
+    { id: 'VID-TASK-001', name: '交通违法行为识别', total: 3, completed: 1, status: 'annotating', extractStatus: 'partial', time: '2026-03-01 09:00' },
+    { id: 'VID-TASK-002', name: '安防监控异常检测', total: 2, completed: 2, status: 'completed', extractStatus: 'completed', time: '2026-03-01 11:15' },
   ]));
 
   const [datasets, setDatasets] = useState<Dataset[]>(() => getSavedData(STORAGE_KEYS.DATASETS, [
-    { id: 'DS-001', name: '标准人脸库-V1', type: 'image', taskIds: ['IMG-TASK-001'], createdAt: '2026-02-15', dataCount: 5000 },
-    { id: 'DS-002', name: '城市交通监控-夜间', type: 'video', taskIds: ['VID-TASK-001'], createdAt: '2026-02-20', dataCount: 1200 },
-    { id: 'DS-003', name: '违停车辆抓拍集', type: 'image', taskIds: ['IMG-TASK-002'], createdAt: '2026-03-01', dataCount: 800 },
-    { id: 'DS-004', name: '安防监控异常检测集', type: 'video', taskIds: ['VID-TASK-002'], createdAt: '2026-03-02', dataCount: 20 },
+    { id: 'DS-001', name: '标准人脸库-V1', type: 'image', taskIds: ['IMG-TASK-001'], createdAt: '2026-02-15', dataCount: 5 },
+    { id: 'DS-002', name: '城市交通监控-夜间', type: 'video', taskIds: ['VID-TASK-001'], createdAt: '2026-02-20', dataCount: 3 },
+    { id: 'DS-003', name: '违停车辆抓拍集', type: 'image', taskIds: ['IMG-TASK-002'], createdAt: '2026-03-01', dataCount: 3 },
+    { id: 'DS-004', name: '安防监控异常检测集', type: 'video', taskIds: ['VID-TASK-002'], createdAt: '2026-03-02', dataCount: 2 },
   ]));
 
   const [exportHistory, setExportHistory] = useState<ExportRecord[]>(() => getSavedData(STORAGE_KEYS.EXPORT_HISTORY, [
@@ -134,24 +134,41 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     { id: 'EXP-002', datasetName: '违停车辆抓拍集', format: 'YOLO', status: 'processing', time: '2026-03-03 11:30' },
   ]));
 
-  const [imageFiles, setImageFiles] = useState(() => getSavedData(STORAGE_KEYS.IMAGE_FILES, [
-    { id: 1, name: 'IMG_001.jpg', status: 'completed' },
-    { id: 2, name: 'IMG_002.jpg', status: 'completed' },
-    { id: 3, name: 'IMG_003.jpg', status: 'pending' },
-    { id: 4, name: 'IMG_004.jpg', status: 'pending' },
-    { id: 5, name: 'IMG_005.jpg', status: 'pending' },
-    { id: 6, name: 'IMG_006.jpg', status: 'pending' },
-    { id: 7, name: 'IMG_007.jpg', status: 'pending' },
-    { id: 8, name: 'IMG_008.jpg', status: 'pending' },
-  ]));
+  const [imageFiles, setImageFiles] = useState(() => {
+    const raw = getSavedData(STORAGE_KEYS.IMAGE_FILES, []);
+    if (raw.length === 0 || raw.some((f: any) => !f.taskId)) {
+      return [
+        { id: 101, taskId: 'IMG-TASK-001', name: 'face_detection_001.jpg', status: 'completed' },
+        { id: 102, taskId: 'IMG-TASK-001', name: 'face_detection_002.jpg', status: 'completed' },
+        { id: 103, taskId: 'IMG-TASK-001', name: 'face_detection_003.jpg', status: 'completed' },
+        { id: 104, taskId: 'IMG-TASK-001', name: 'passenger_face_004.jpg', status: 'pending' },
+        { id: 105, taskId: 'IMG-TASK-001', name: 'driver_face_005.jpg', status: 'pending' },
+        
+        { id: 201, taskId: 'IMG-TASK-002', name: 'sedan_red_001.jpg', status: 'completed' },
+        { id: 202, taskId: 'IMG-TASK-002', name: 'suv_black_002.jpg', status: 'completed' },
+        { id: 203, taskId: 'IMG-TASK-002', name: 'truck_white_003.jpg', status: 'completed' },
+        
+        { id: 301, taskId: 'IMG-TASK-003', name: 'pedestrian_street_001.jpg', status: 'pending' },
+        { id: 302, taskId: 'IMG-TASK-003', name: 'pedestrian_crossing_002.jpg', status: 'pending' },
+        { id: 303, taskId: 'IMG-TASK-003', name: 'pedestrian_mall_003.jpg', status: 'pending' },
+      ];
+    }
+    return raw;
+  });
 
-  const [videoFiles, setVideoFiles] = useState(() => getSavedData(STORAGE_KEYS.VIDEO_FILES, [
-    { id: 1, taskId: 'VID-TASK-001', name: 'VIDEO_001.mp4', status: 'completed', extractStatus: 'ready', strategy: 'fps', fps: 5, totalFrames: 120 },
-    { id: 2, taskId: 'VID-TASK-001', name: 'VIDEO_002.mp4', status: 'pending', extractStatus: 'pending', strategy: null, totalFrames: 0 },
-    { id: 3, taskId: 'VID-TASK-001', name: 'VIDEO_003.mp4', status: 'pending', extractStatus: 'extracting', strategy: 'interval', interval: 10, totalFrames: 45 },
-    { id: 4, taskId: 'VID-TASK-002', name: 'MONITOR_001.mp4', status: 'completed', extractStatus: 'ready', strategy: 'fps', fps: 10, totalFrames: 300 },
-    { id: 5, taskId: 'VID-TASK-002', name: 'MONITOR_002.mp4', status: 'completed', extractStatus: 'ready', strategy: 'total', total: 100, totalFrames: 100 },
-  ]));
+  const [videoFiles, setVideoFiles] = useState(() => {
+    const raw = getSavedData(STORAGE_KEYS.VIDEO_FILES, []);
+    if (raw.length === 0) {
+      return [
+        { id: 1, taskId: 'VID-TASK-001', name: 'VIDEO_001.mp4', status: 'completed', extractStatus: 'ready', strategy: 'fps', fps: 5, totalFrames: 12 },
+        { id: 2, taskId: 'VID-TASK-001', name: 'VIDEO_002.mp4', status: 'pending', extractStatus: 'pending', strategy: null, totalFrames: 0 },
+        { id: 3, taskId: 'VID-TASK-001', name: 'VIDEO_003.mp4', status: 'pending', extractStatus: 'extracting', strategy: 'interval', interval: 10, totalFrames: 15 },
+        { id: 4, taskId: 'VID-TASK-002', name: 'MONITOR_001.mp4', status: 'completed', extractStatus: 'ready', strategy: 'fps', fps: 10, totalFrames: 18 },
+        { id: 5, taskId: 'VID-TASK-002', name: 'MONITOR_002.mp4', status: 'completed', extractStatus: 'ready', strategy: 'total', total: 10, totalFrames: 10 },
+      ];
+    }
+    return raw;
+  });
 
   const [annotations, setAnnotations] = useState<Record<string, Rect[]>>(() => getSavedData(STORAGE_KEYS.ANNOTATIONS, {
     'img_0': [
@@ -182,6 +199,11 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
 
   const [importModalConfig, setImportModalConfig] = useState<{ open: boolean; type?: 'image' | 'video' }>({ open: false });
   const [statsModalConfig, setStatsModalConfig] = useState<{ open: boolean; task?: any }>({ open: false });
+
+  const currentImageFiles = React.useMemo(() => {
+    if (!selectedItem) return [];
+    return imageFiles.filter((f: any) => f.taskId === selectedItem.id);
+  }, [imageFiles, selectedItem]);
 
   const currentTaskFiles = React.useMemo(() => {
     if (!selectedItem) return [];
@@ -219,7 +241,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
-  const currentKey = view === 'imageEditor' ? `img_${currentImageIndex}` : `vid_${selectedVideo?.id}_${currentFrameIndex}`;
+  const activeImageFile = currentImageFiles[currentImageIndex];
+  const currentKey = view === 'imageEditor' 
+    ? (activeImageFile ? `img_${activeImageFile.id}` : '') 
+    : `vid_${selectedVideo?.id}_${currentFrameIndex}`;
   const rects = annotations[currentKey] || [];
 
   const setRects = (newRects: Rect[] | ((prev: Rect[]) => Rect[])) => {
@@ -325,6 +350,26 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   }, [videoFiles]);
 
   useEffect(() => {
+    // Sync image task status with file statuses
+    setImageTasks(prevTasks => prevTasks.map(task => {
+      const taskFiles = imageFiles.filter(f => f.taskId === task.id);
+      if (taskFiles.length === 0) return { ...task, total: 0, completed: 0, status: 'pending' };
+
+      const total = taskFiles.length;
+      const completed = taskFiles.filter(f => f.status === 'completed').length;
+
+      const allAnnotated = completed === total && total > 0;
+      const anyAnnotated = completed > 0;
+      let newStatus = task.status;
+      if (allAnnotated) newStatus = 'completed';
+      else if (anyAnnotated) newStatus = 'annotating';
+      else newStatus = 'pending';
+
+      return { ...task, total, completed, status: newStatus };
+    }));
+  }, [imageFiles]);
+
+  useEffect(() => {
     // Reset annotations and index when switching tasks
     setAnnotations({});
     setCurrentImageIndex(0);
@@ -336,7 +381,16 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     setView('list');
   }, [activeSubTab]);
 
-  const getStatusBadge = (status: string) => {
+  const getImageStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed': return <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 font-medium">已完成</span>;
+      case 'annotating': return <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 font-medium">标注中</span>;
+      case 'pending': return <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-medium">未开始</span>;
+      default: return <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-medium">未标注</span>;
+    }
+  };
+
+  const getVideoStatusBadge = (status: string) => {
     switch (status) {
       case 'completed': return <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 font-medium">已完成</span>;
       case 'annotating': return <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 font-medium">标注中</span>;
@@ -346,6 +400,10 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       case 'pending': return <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-medium">待抽帧</span>;
       default: return <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-medium">未标注</span>;
     }
+  };
+
+  const getStatusBadge = (status: string) => {
+    return getVideoStatusBadge(status);
   };
 
   // --- Render Functions ---
@@ -421,7 +479,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4">{getStatusBadge(task.status)}</td>
+                <td className="px-6 py-4">{getImageStatusBadge(task.status)}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
                   <button 
@@ -506,7 +564,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{task.name}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-mono">{task.id}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.total}</td>
-                <td className="px-6 py-4">{getStatusBadge(task.extractStatus)}</td>
+                <td className="px-6 py-4">{getVideoStatusBadge(task.extractStatus)}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.completed}</td>
                 <td className="px-6 py-4">
                   <div className="w-24">
@@ -518,7 +576,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4">{getStatusBadge(task.status)}</td>
+                <td className="px-6 py-4">{getVideoStatusBadge(task.status)}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
                   <button 
@@ -645,13 +703,25 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               input.onchange = (e: any) => {
                 const files = Array.from(e.target.files);
                 if (files.length > 0) {
-                  const newFiles = files.map((file: any, idx) => ({ 
-                    id: Date.now() + idx, 
-                    name: file.name, 
-                    status: 'pending' 
-                  }));
-                  setImageFiles(prev => [...prev, ...newFiles]);
-                  alert(`成功导入 ${files.length} 张图片`);
+                  const promises = files.map((file: any, idx) => {
+                    return new Promise<any>((resolve) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        resolve({
+                          id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                          taskId: selectedItem?.id,
+                          name: file.name,
+                          status: 'pending',
+                          url: reader.result
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                  });
+                  Promise.all(promises).then((newFiles) => {
+                    setImageFiles(prev => [...prev, ...newFiles]);
+                    alert(`成功导入 ${newFiles.length} 张图片`);
+                  });
                 }
               };
               input.click();
@@ -711,8 +781,8 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         {/* Left: Image List */}
         <div className="w-64 border-r border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
           <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between">
-            <h3 className="text-sm font-bold flex items-center">
-              <ImageIcon className="w-4 h-4 mr-2 text-blue-500" /> 待标注图片 ({imageFiles.length})
+            <h3 id="image-annotation-count-heading" className="text-sm font-bold flex items-center">
+              <ImageIcon className="w-4 h-4 mr-2 text-blue-500" /> 待标注图片 ({currentImageFiles.length})
             </h3>
             <button 
               onClick={() => {
@@ -722,8 +792,18 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 input.onchange = (e: any) => {
                   const file = e.target.files[0];
                   if (file) {
-                    const newFile = { id: Date.now(), name: file.name, status: 'pending' };
-                    setImageFiles([...imageFiles, newFile]);
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      const newFile = { 
+                        id: Date.now(), 
+                        taskId: selectedItem?.id, 
+                        name: file.name, 
+                        status: 'pending',
+                        url: reader.result
+                      };
+                      setImageFiles((prev: any) => [...prev, newFile]);
+                    };
+                    reader.readAsDataURL(file);
                   }
                 };
                 input.click();
@@ -735,7 +815,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {imageFiles.map((file, idx) => (
+            {currentImageFiles.map((file, idx) => (
               <div 
                 key={file.id} 
                 onClick={() => { setCurrentImageIndex(idx); setSelectedRectId(null); }}
@@ -745,11 +825,28 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 )}
               >
                 <div className="aspect-video rounded bg-slate-200 dark:bg-slate-800 mb-2 overflow-hidden">
-                  <img src={`https://picsum.photos/seed/${idx + 100}/200/120`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={file.url || `https://picsum.photos/seed/${file.id}/200/120`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs truncate font-medium">{file.name}</span>
-                  {file.status === 'completed' ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
+                <div className="flex items-center justify-between text-[var(--text-primary)]">
+                  <span className="text-xs truncate font-medium max-w-[120px]">{file.name}</span>
+                  <div className="flex items-center space-x-1">
+                    {file.status === 'completed' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-400" />}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('确定要删除该图片吗？')) {
+                          setImageFiles(prev => prev.filter(f => f.id !== file.id));
+                          if (currentImageIndex >= currentImageFiles.length - 1 && currentImageIndex > 0) {
+                            setCurrentImageIndex(prev => prev - 1);
+                          }
+                        }
+                      }}
+                      className="p-1 text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="删除图片"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -771,7 +868,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               width: '800px', 
               height: '600px', 
               transform: `scale(${zoom / 100})`,
-              backgroundImage: `url(https://picsum.photos/seed/${currentImageIndex + 100}/800/600)`,
+              backgroundImage: activeImageFile ? (activeImageFile.url ? `url(${activeImageFile.url})` : `url(https://picsum.photos/seed/${activeImageFile.id}/800/600)`) : 'none',
               backgroundSize: 'cover'
             }}
           >
@@ -832,19 +929,21 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           </div>
 
           {/* Canvas Controls Overlay */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4 bg-[var(--bg-secondary)]/80 backdrop-blur-md border border-[var(--border-color)] rounded-full px-6 py-2 shadow-xl">
+          <div id="canvas-navigation-overlay" className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4 bg-[var(--bg-secondary)]/80 backdrop-blur-md border border-[var(--border-color)] rounded-full px-6 py-2 shadow-xl">
             <button 
               disabled={currentImageIndex === 0}
               onClick={() => { setCurrentImageIndex(prev => prev - 1); setSelectedRectId(null); }}
-              className="p-1.5 hover:bg-white rounded-full disabled:opacity-30"
+              className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-full disabled:opacity-30 text-[var(--text-primary)]"
             >
               <SkipBack className="w-4 h-4" />
             </button>
-            <span className="text-xs font-bold">{currentImageIndex + 1} / 12</span>
+            <span className="text-xs font-bold text-[var(--text-primary)]">
+              {currentImageFiles.length > 0 ? currentImageIndex + 1 : 0} / {currentImageFiles.length}
+            </span>
             <button 
-              disabled={currentImageIndex === 11}
+              disabled={currentImageIndex >= currentImageFiles.length - 1}
               onClick={() => { setCurrentImageIndex(prev => prev + 1); setSelectedRectId(null); }}
-              className="p-1.5 hover:bg-white rounded-full disabled:opacity-30"
+              className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-full disabled:opacity-30 text-[var(--text-primary)]"
             >
               <SkipForward className="w-4 h-4" />
             </button>
@@ -1128,7 +1227,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                   )}
                 >
                   <div className="w-16 aspect-video rounded bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
-                    <img src={`https://picsum.photos/seed/frame-${idx}/160/90`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={`https://picsum.photos/seed/vid-${selectedVideo?.id}-frame-${idx}/160/90`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-[10px] font-bold text-blue-500">Frame {idx + 1}</span>
@@ -1154,7 +1253,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                   width: '800px', 
                   height: '600px', 
                   transform: `scale(${zoom / 100})`,
-                  backgroundImage: `url(https://picsum.photos/seed/frame-${currentFrameIndex}/800/600)`,
+                  backgroundImage: `url(https://picsum.photos/seed/vid-${selectedVideo?.id}-frame-${currentFrameIndex}/800/600)`,
                   backgroundSize: 'cover'
                 }}
               >
@@ -1659,19 +1758,47 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       if (config.dataset) {
         setDatasets(prev => prev.map(ds => ds.id === config.dataset.id ? { ...ds, name, type } : ds));
         alert('数据集更新成功');
+        onClose();
       } else {
-        const newDs: Dataset = {
-          id: `DS-${Math.floor(Math.random() * 1000)}`,
-          name,
-          type,
-          taskIds: [],
-          createdAt: new Date().toISOString().split('T')[0],
-          dataCount: files.length || Math.floor(Math.random() * 500) + 100 // Fallback if no files selected but name entered
-        };
-        setDatasets([newDs, ...datasets]);
-        alert(`数据集创建成功，共包含 ${newDs.dataCount} 个文件`);
+        const newDsId = `DS-${Math.floor(Math.random() * 1000)}`;
+        const readFilesPromises = files.map((file, idx) => {
+          return new Promise<any>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
+                name: file.name,
+                url: reader.result
+              });
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+
+        Promise.all(readFilesPromises).then((readFiles) => {
+          if (readFiles.length > 0) {
+            try {
+              const savedRaw = localStorage.getItem('dataset_loaded_files') || '{}';
+              const saved = JSON.parse(savedRaw);
+              saved[newDsId] = readFiles;
+              localStorage.setItem('dataset_loaded_files', JSON.stringify(saved));
+            } catch (err) {
+              console.error('Failed to save source files to localStorage due to quota limits:', err);
+            }
+          }
+
+          const newDs: Dataset = {
+            id: newDsId,
+            name,
+            type,
+            taskIds: [],
+            createdAt: new Date().toISOString().split('T')[0],
+            dataCount: files.length || Math.floor(Math.random() * 5) + 3
+          };
+          setDatasets([newDs, ...datasets]);
+          alert(`数据集创建成功，共包含 ${newDs.dataCount} 个文件`);
+          onClose();
+        });
       }
-      onClose();
     };
 
     return (
@@ -2305,10 +2432,24 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             onClose={() => setImportModalConfig({ open: false })}
             onImport={(data) => {
               const newTaskId = `${importModalConfig.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`;
+              
+              // Load any persistent source files uploaded during dataset creation
+              let loadedFiles: any[] = [];
+              try {
+                const savedRaw = localStorage.getItem('dataset_loaded_files') || '{}';
+                const saved = JSON.parse(savedRaw);
+                loadedFiles = saved[data.datasetId] || [];
+              } catch (err) {
+                console.error(err);
+              }
+
+              // File count calculation
+              const computedFileCount = loadedFiles.length > 0 ? loadedFiles.length : (data.fileCount || 5);
+
               const newTask = {
                 id: newTaskId,
                 name: data.name,
-                total: data.fileCount || 100,
+                total: computedFileCount,
                 completed: 0,
                 status: 'pending',
                 extractStatus: importModalConfig.type === 'video' ? 'pending' : undefined,
@@ -2317,15 +2458,57 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               
               if (importModalConfig.type === 'image') {
                 setImageTasks([newTask, ...imageTasks]);
+                if (loadedFiles.length > 0) {
+                  const generatedImageFiles = loadedFiles.map((f: any, idx: number) => ({
+                    id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                    taskId: newTaskId,
+                    name: f.name,
+                    status: 'pending',
+                    url: f.url
+                  }));
+                  setImageFiles((prev: any) => [...prev, ...generatedImageFiles]);
+                } else {
+                  const generatedImageFiles = Array.from({ length: computedFileCount }).map((_, idx) => ({
+                    id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                    taskId: newTaskId,
+                    name: `${data.name || 'image'}_${idx + 1}.jpg`,
+                    status: 'pending'
+                  }));
+                  setImageFiles((prev: any) => [...prev, ...generatedImageFiles]);
+                }
               } else {
                 setVideoTasks([newTask, ...videoTasks]);
+                if (loadedFiles.length > 0) {
+                  const generatedVideoFiles = loadedFiles.map((f: any, idx: number) => ({
+                    id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                    taskId: newTaskId,
+                    name: f.name,
+                    status: 'pending',
+                    extractStatus: 'pending',
+                    strategy: null,
+                    totalFrames: 0,
+                    url: f.url
+                  }));
+                  setVideoFiles((prev: any) => [...prev, ...generatedVideoFiles]);
+                } else {
+                  const generatedVideoFiles = Array.from({ length: computedFileCount }).map((_, idx) => ({
+                    id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                    taskId: newTaskId,
+                    name: `${data.name || 'video'}_${idx + 1}.mp4`,
+                    status: 'pending',
+                    extractStatus: 'pending',
+                    strategy: null,
+                    totalFrames: 0
+                  }));
+                  setVideoFiles((prev: any) => [...prev, ...generatedVideoFiles]);
+                }
               }
 
               // Link task to dataset
               if (data.datasetId) {
                 setDatasets(prev => prev.map(ds => 
                   ds.id === data.datasetId 
-                    ? { ...ds, taskIds: [...ds.taskIds, newTaskId] } 
+                    ? { ...ds, taskIds: [...ds.taskIds, newTaskId], dataCount: computedFileCount } 
                     : ds
                 ));
               }
