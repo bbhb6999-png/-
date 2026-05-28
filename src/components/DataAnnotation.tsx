@@ -37,6 +37,62 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+const DB_NAME = 'DataAnnotationDB';
+const STORE_NAME = 'files';
+
+const getDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+};
+
+const getIndexedDBFile = async (key: string): Promise<any> => {
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(key);
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        resolve(null);
+      };
+    });
+  } catch (err) {
+    console.error('IndexedDB get error:', err);
+    return null;
+  }
+};
+
+const saveIndexedDBFile = async (key: string, value: any): Promise<void> => {
+  try {
+    const db = await getDB();
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(value, key);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.error('IndexedDB save error:', err);
+  }
+};
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -77,6 +133,49 @@ interface ExportRecord {
 
 export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [view, setView] = useState<AnnotationView>('list');
+  
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const [alertState, setAlertState] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    title: '',
+    message: ''
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmState({
+      open: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmState(prev => ({ ...prev, open: false }));
+      }
+    });
+  };
+
+  const showAlert = (title: string, message: string) => {
+    setAlertState({
+      open: true,
+      title,
+      message
+    });
+  };
+
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [extractModalOpen, setExtractModalOpen] = useState(false);
@@ -184,15 +283,135 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     { name: '行人', color: '#ef4444' },
   ]));
 
-  // Auto-save Effects
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.IMAGE_TASKS, JSON.stringify(imageTasks)); }, [imageTasks]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.VIDEO_TASKS, JSON.stringify(videoTasks)); }, [videoTasks]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DATASETS, JSON.stringify(datasets)); }, [datasets]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.EXPORT_HISTORY, JSON.stringify(exportHistory)); }, [exportHistory]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.IMAGE_FILES, JSON.stringify(imageFiles)); }, [imageFiles]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.VIDEO_FILES, JSON.stringify(videoFiles)); }, [videoFiles]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.ANNOTATIONS, JSON.stringify(annotations)); }, [annotations]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.LABELS, JSON.stringify(labels)); }, [labels]);
+  // Auto-save Effects with try-catch to prevent QuotaExceededError crashes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.IMAGE_TASKS, JSON.stringify(imageTasks));
+    } catch (e) {
+      console.warn('Failed to save image tasks to localStorage', e);
+    }
+  }, [imageTasks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.VIDEO_TASKS, JSON.stringify(videoTasks));
+    } catch (e) {
+      console.warn('Failed to save video tasks to localStorage', e);
+    }
+  }, [videoTasks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.DATASETS, JSON.stringify(datasets));
+    } catch (e) {
+      console.warn('Failed to save datasets to localStorage', e);
+    }
+  }, [datasets]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.EXPORT_HISTORY, JSON.stringify(exportHistory));
+    } catch (e) {
+      console.warn('Failed to save export history to localStorage', e);
+    }
+  }, [exportHistory]);
+
+  useEffect(() => {
+    try {
+      const sanitized = imageFiles.map((f: any) => {
+        if (f.url && f.url.startsWith('data:')) {
+          const { url, ...rest } = f;
+          return rest;
+        }
+        return f;
+      });
+      localStorage.setItem(STORAGE_KEYS.IMAGE_FILES, JSON.stringify(sanitized));
+    } catch (e) {
+      console.warn('Failed to save image files to localStorage (possibly due to base64 size limit)', e);
+    }
+  }, [imageFiles]);
+
+  useEffect(() => {
+    try {
+      const sanitized = videoFiles.map((f: any) => {
+        if (f.url && f.url.startsWith('data:')) {
+          const { url, ...rest } = f;
+          return rest;
+        }
+        return f;
+      });
+      localStorage.setItem(STORAGE_KEYS.VIDEO_FILES, JSON.stringify(sanitized));
+    } catch (e) {
+      console.warn('Failed to save video files to localStorage', e);
+    }
+  }, [videoFiles]);
+
+  // Load saved large URL files on mount from IndexedDB
+  useEffect(() => {
+    const loadSavedLargeFiles = async () => {
+      try {
+        setImageFiles(prev => {
+          Promise.all(
+            prev.map(async (f: any) => {
+              if (!f.url) {
+                const savedUrl = await getIndexedDBFile(`file_url_${f.id}`);
+                if (savedUrl) {
+                  return { ...f, url: savedUrl };
+                }
+              }
+              return f;
+            })
+          ).then(loadedImageFiles => {
+            const hasChanges = loadedImageFiles.some((f, i) => f.url !== prev[i]?.url);
+            if (hasChanges) {
+              setImageFiles(loadedImageFiles);
+            }
+          });
+          return prev;
+        });
+
+        setVideoFiles(prev => {
+          Promise.all(
+            prev.map(async (f: any) => {
+              if (!f.url) {
+                const savedUrl = await getIndexedDBFile(`file_url_${f.id}`);
+                if (savedUrl) {
+                  return { ...f, url: savedUrl };
+                }
+              }
+              return f;
+            })
+          ).then(loadedVideoFiles => {
+            const hasChanges = loadedVideoFiles.some((f, i) => f.url !== prev[i]?.url);
+            if (hasChanges) {
+              setVideoFiles(loadedVideoFiles);
+            }
+          });
+          return prev;
+        });
+      } catch (err) {
+        console.error('Failed to restore large file URLs from IndexedDB', err);
+      }
+    };
+    
+    loadSavedLargeFiles();
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ANNOTATIONS, JSON.stringify(annotations));
+    } catch (e) {
+      console.warn('Failed to save annotations to localStorage', e);
+    }
+  }, [annotations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.LABELS, JSON.stringify(labels));
+    } catch (e) {
+      console.warn('Failed to save labels to localStorage', e);
+    }
+  }, [labels]);
 
   const [datasetModalConfig, setDatasetModalConfig] = useState<{ open: boolean; dataset?: Dataset }>({ open: false });
   const [exportDatasetModalConfig, setExportDatasetModalConfig] = useState<{ open: boolean; datasets: Dataset[] }>({ open: false, datasets: [] });
@@ -237,6 +456,30 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       return matchesSearch && matchesStatus;
     });
   }, [videoTasks, vidSearch, vidStatusFilter]);
+
+  const allTasks = React.useMemo(() => {
+    const imgTasks = imageTasks.map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      type: '图片',
+      total: t.total,
+      count: t.completed,
+      progress: t.total > 0 ? Math.round((t.completed / t.total) * 100) : 0,
+      time: t.time,
+      isImage: true
+    }));
+    const vidTasks = videoTasks.map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      type: '视频',
+      total: t.total,
+      count: t.completed,
+      progress: t.total > 0 ? Math.round((t.completed / t.total) * 100) : 0,
+      time: t.time,
+      isImage: false
+    }));
+    return [...imgTasks, ...vidTasks];
+  }, [imageTasks, videoTasks]);
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
@@ -256,8 +499,69 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   };
 
   const [selectedRectId, setSelectedRectId] = useState<string | null>(null);
+
+  const handleDeleteImageTask = (taskId: string) => {
+    showConfirm('删除确认', '确定要删除该图片标注任务及关联数据吗？', () => {
+      setImageTasks((prev: any) => prev.filter((t: any) => t.id !== taskId));
+      setImageFiles((prev: any) => prev.filter((f: any) => f.taskId !== taskId));
+      setDatasets((prev: any) => prev.map((ds: any) => ({
+        ...ds,
+        taskIds: ds.taskIds.filter((id: string) => id !== taskId)
+      })));
+      showAlert('删除成功', '图片标注任务删除成功');
+    });
+  };
+
+  const handleDeleteVideoTask = (taskId: string) => {
+    showConfirm('删除确认', '确定要删除该视频标注任务及关联数据吗？', () => {
+      setVideoTasks((prev: any) => prev.filter((t: any) => t.id !== taskId));
+      setVideoFiles((prev: any) => prev.filter((f: any) => f.taskId !== taskId));
+      setDatasets((prev: any) => prev.map((ds: any) => ({
+        ...ds,
+        taskIds: ds.taskIds.filter((id: string) => id !== taskId)
+      })));
+      showAlert('删除成功', '视频标注任务删除成功');
+    });
+  };
   const [tool, setTool] = useState<'select' | 'rect'>('select');
   const [zoom, setZoom] = useState(100);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [imageSize, setImageSize] = useState({ width: 800, height: 600 });
+
+  useEffect(() => {
+    setPanOffset({ x: 0, y: 0 });
+    setZoom(100);
+    setSelectedRectId(null);
+    if (!activeImageFile) return;
+    const imgUrl = activeImageFile.url || `https://picsum.photos/seed/${activeImageFile.id}/800/600`;
+    const img = new Image();
+    img.src = imgUrl;
+    img.onload = () => {
+      const maxWidth = 800;
+      const maxHeight = 600;
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (!w || !h) {
+        setImageSize({ width: 800, height: 600 });
+        return;
+      }
+      const ratio = w / h;
+      if (w > maxWidth) {
+        w = maxWidth;
+        h = w / ratio;
+      }
+      if (h > maxHeight) {
+        h = maxHeight;
+        w = h * ratio;
+      }
+      setImageSize({ width: Math.round(w), height: Math.round(h) });
+    };
+    img.onerror = () => {
+      setImageSize({ width: 800, height: 600 });
+    };
+  }, [activeImageFile]);
 
   const [activeLabel, setActiveLabel] = useState('人脸');
   const [isDrawing, setIsDrawing] = useState(false);
@@ -267,6 +571,17 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const [newLabelName, setNewLabelName] = useState('');
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (tool === 'select') {
+      const target = e.target as HTMLElement;
+      if (target.closest('button')) return;
+      setIsPanning(true);
+      setPanStart({
+        x: e.clientX - panOffset.x,
+        y: e.clientY - panOffset.y
+      });
+      return;
+    }
+
     if (tool !== 'rect') return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / (zoom / 100);
@@ -287,6 +602,14 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      setPanOffset({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      });
+      return;
+    }
+
     if (!isDrawing || !currentRect) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / (zoom / 100);
@@ -307,6 +630,11 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   };
 
   const handleMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+
     if (!isDrawing || !currentRect) return;
     if (currentRect.width > 5 && currentRect.height > 5) {
       const finalRect = { ...currentRect, id: Math.random().toString(36).substr(2, 9) };
@@ -482,12 +810,20 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 <td className="px-6 py-4">{getImageStatusBadge(task.status)}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
-                  <button 
-                    onClick={() => { setSelectedItem(task); setView('imageEditor'); }}
-                    className="text-blue-500 hover:text-blue-600 text-sm font-medium"
-                  >
-                    开始标注
-                  </button>
+                  <div className="flex items-center justify-end space-x-3">
+                    <button 
+                      onClick={() => { setSelectedItem(task); setView('imageEditor'); }}
+                      className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+                    >
+                      开始标注
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteImageTask(task.id)}
+                      className="text-red-500 hover:text-red-600 text-sm font-medium"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </td>
               </tr>
             )) : (
@@ -579,12 +915,20 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 <td className="px-6 py-4">{getVideoStatusBadge(task.status)}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
-                  <button 
-                    onClick={() => { setSelectedItem(task); setView('videoDetail'); }}
-                    className="text-blue-500 hover:text-blue-600 text-sm font-medium"
-                  >
-                    进入详情
-                  </button>
+                  <div className="flex items-center justify-end space-x-3">
+                    <button 
+                      onClick={() => { setSelectedItem(task); setView('videoDetail'); }}
+                      className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+                    >
+                      进入详情
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteVideoTask(task.id)}
+                      className="text-red-500 hover:text-red-600 text-sm font-medium"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </td>
               </tr>
             )) : (
@@ -628,12 +972,8 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
-            {[
-              { name: '人脸识别评测集', type: '图片', total: 5000, count: 4200, progress: 84, time: '2026-02-15' },
-              { name: '车辆特征库', type: '图片', total: 2000, count: 120, progress: 6, time: '2026-02-28' },
-              { name: '交通违章视频标注', type: '视频', total: 50, count: 12, progress: 24, time: '2026-03-01' },
-            ].map((task, i) => (
-              <tr key={i} className="hover:bg-[var(--bg-primary)] transition-colors">
+            {allTasks.length > 0 ? allTasks.map((task) => (
+              <tr key={task.id} className="hover:bg-[var(--bg-primary)] transition-colors">
                 <td className="px-6 py-4 text-sm font-medium text-[var(--text-primary)]">{task.name}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.type}</td>
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.total}</td>
@@ -651,12 +991,48 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">{task.time}</td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end space-x-3">
-                    <button className="text-xs font-medium text-blue-500 hover:text-blue-600">查看</button>
-                    <button className="text-xs font-medium text-red-500 hover:text-red-600">删除</button>
+                    <button 
+                      onClick={() => {
+                        if (task.isImage) {
+                          const realTask = imageTasks.find((t: any) => t.id === task.id);
+                          if (realTask) {
+                            setSelectedItem(realTask);
+                            setView('imageEditor');
+                          }
+                        } else {
+                          const realTask = videoTasks.find((t: any) => t.id === task.id);
+                          if (realTask) {
+                            setSelectedItem(realTask);
+                            setView('videoDetail');
+                          }
+                        }
+                      }}
+                      className="text-xs font-medium text-blue-500 hover:text-blue-600"
+                    >
+                      查看
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (task.isImage) {
+                          handleDeleteImageTask(task.id);
+                        } else {
+                          handleDeleteVideoTask(task.id);
+                        }
+                      }}
+                      className="text-xs font-medium text-red-500 hover:text-red-600"
+                    >
+                      删除
+                    </button>
                   </div>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-[var(--text-secondary)]">
+                  暂无标注任务
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -707,12 +1083,17 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     return new Promise<any>((resolve) => {
                       const reader = new FileReader();
                       reader.onloadend = () => {
+                        const fileId = Date.now() + idx + Math.floor(Math.random() * 1000);
+                        const url = reader.result;
+                        if (url) {
+                          saveIndexedDBFile(`file_url_${fileId}`, url);
+                        }
                         resolve({
-                          id: Date.now() + idx + Math.floor(Math.random() * 1000),
+                          id: fileId,
                           taskId: selectedItem?.id,
                           name: file.name,
                           status: 'pending',
-                          url: reader.result
+                          url
                         });
                       };
                       reader.readAsDataURL(file);
@@ -720,7 +1101,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                   });
                   Promise.all(promises).then((newFiles) => {
                     setImageFiles(prev => [...prev, ...newFiles]);
-                    alert(`成功导入 ${newFiles.length} 张图片`);
+                    showAlert('导入成功', `成功导入 ${newFiles.length} 张图片`);
                   });
                 }
               };
@@ -768,7 +1149,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           </button>
           <button 
             onClick={() => {
-              alert('标注已保存成功');
+              showAlert('保存成功', '标注已保存成功');
             }}
             className="flex items-center px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
           >
@@ -794,12 +1175,17 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                   if (file) {
                     const reader = new FileReader();
                     reader.onloadend = () => {
+                      const fileId = Date.now();
+                      const url = reader.result;
+                      if (url) {
+                        saveIndexedDBFile(`file_url_${fileId}`, url);
+                      }
                       const newFile = { 
-                        id: Date.now(), 
+                        id: fileId, 
                         taskId: selectedItem?.id, 
                         name: file.name, 
                         status: 'pending',
-                        url: reader.result
+                        url
                       };
                       setImageFiles((prev: any) => [...prev, newFile]);
                     };
@@ -834,12 +1220,12 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm('确定要删除该图片吗？')) {
+                        showConfirm('删除确认', `确定要删除图片 ${file.name} 吗？`, () => {
                           setImageFiles(prev => prev.filter(f => f.id !== file.id));
                           if (currentImageIndex >= currentImageFiles.length - 1 && currentImageIndex > 0) {
                             setCurrentImageIndex(prev => prev - 1);
                           }
-                        }
+                        });
                       }}
                       className="p-1 text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                       title="删除图片"
@@ -854,22 +1240,37 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         </div>
 
         {/* Center: Canvas */}
-        <div className="flex-1 bg-slate-100 dark:bg-slate-950 relative overflow-hidden flex items-center justify-center">
+        <div 
+          onWheel={(e) => {
+            const scaleFactor = 1.1;
+            if (e.deltaY < 0) {
+              setZoom(z => Math.min(500, Math.round(z * scaleFactor)));
+            } else {
+              setZoom(z => Math.max(10, Math.round(z / scaleFactor)));
+            }
+          }}
+          className="flex-1 bg-slate-100 dark:bg-slate-950 relative overflow-hidden flex items-center justify-center"
+        >
           <div 
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             className={cn(
-              "relative bg-white shadow-2xl transition-transform duration-200 select-none",
-              tool === 'rect' ? 'cursor-crosshair' : 'cursor-default'
+              "absolute bg-white shadow-2xl select-none",
+              tool === 'select' ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-crosshair'
             )}
             style={{ 
-              width: '800px', 
-              height: '600px', 
-              transform: `scale(${zoom / 100})`,
+              left: '50%',
+              top: '50%',
+              width: `${imageSize.width}px`, 
+              height: `${imageSize.height}px`, 
+              transform: `translate(calc(-50% + ${panOffset.x}px), calc(-50% + ${panOffset.y}px)) scale(${zoom / 100})`,
+              transformOrigin: 'center center',
               backgroundImage: activeImageFile ? (activeImageFile.url ? `url(${activeImageFile.url})` : `url(https://picsum.photos/seed/${activeImageFile.id}/800/600)`) : 'none',
-              backgroundSize: 'cover'
+              backgroundSize: 'contain',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
             }}
           >
             {/* Rects */}
@@ -1158,7 +1559,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     totalFrames: 0
                   }));
                   setVideoFiles(prev => [...prev, ...newFiles]);
-                  alert(`成功导入 ${newFiles.length} 个视频，请返回详情页进行抽帧配置`);
+                  showAlert('导入成功', `成功导入 ${newFiles.length} 个视频，请返回详情页进行抽帧配置`);
                 };
                 input.click();
               }}
@@ -1199,7 +1600,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             <button 
               onClick={() => {
                 setVideoFiles(prev => prev.map(f => f.id === selectedVideo.id ? { ...f, status: 'completed' } : f));
-                alert('标注已保存成功');
+                showAlert('保存成功', '标注已保存成功');
               }}
               className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
             >
@@ -1506,9 +1907,9 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                       )}
                       <button 
                         onClick={() => {
-                          if (confirm('确定要删除该视频吗？')) {
+                          showConfirm('删除确认', `确定要删除视频 ${file.name} 吗？`, () => {
                             setVideoFiles(prev => prev.filter(f => f.id !== file.id));
-                          }
+                          });
                         }}
                         className="text-xs font-medium text-red-500 hover:text-red-600"
                       >
@@ -1575,7 +1976,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 const selectedDatasets = datasets.filter(ds => selectedDatasetIds.includes(ds.id));
                 const exportable = selectedDatasets.filter(isDatasetExportable);
                 if (exportable.length < selectedDatasets.length) {
-                  alert('部分选中的数据集有关联任务未完成，无法导出');
+                  showAlert('部分数据集无法导出', '部分选中的数据集有关联任务未完成，无法导出');
                 }
                 if (exportable.length > 0) {
                   setExportDatasetModalConfig({ open: true, datasets: exportable });
@@ -1593,15 +1994,15 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 const undeletable = selectedDatasets.filter(ds => ds.taskIds.length > 0);
                 
                 if (undeletable.length > 0) {
-                  alert(`选中的数据集项中有 ${undeletable.length} 个已关联标注任务，无法删除。只能删除未关联任务的数据集。`);
+                  showAlert('无法删除', `选中的数据集项中有 ${undeletable.length} 个已关联标注任务，无法删除。只能删除未关联任务的数据集。`);
                 }
                 
                 if (deletable.length > 0) {
-                  if (confirm(`确定要删除选中的 ${deletable.length} 个未关联任务的数据集吗？`)) {
+                  showConfirm('批量删除确认', `确定要删除选中的 ${deletable.length} 个未关联任务的数据集吗？`, () => {
                     const deletableIds = deletable.map(ds => ds.id);
                     setDatasets(prev => prev.filter(ds => !deletableIds.includes(ds.id)));
                     setSelectedDatasetIds(prev => prev.filter(id => !deletableIds.includes(id)));
-                  }
+                  });
                 }
               }}
               className="flex items-center px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 disabled:opacity-50"
@@ -1712,12 +2113,12 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                       <button 
                         onClick={() => {
                           if (ds.taskIds.length > 0) {
-                            alert('该数据集已关联标注任务，无法删除。请先删除相关标注任务后再尝试。');
+                            showAlert('无法删除', '该数据集已关联标注任务，无法删除。请先删除相关标注任务后再尝试。');
                             return;
                           }
-                          if (confirm('确定要删除该数据集吗？')) {
+                          showConfirm('删除确认', `确定要删除数据集 ${ds.name} 吗？`, () => {
                             setDatasets(prev => prev.filter(item => item.id !== ds.id));
-                          }
+                          });
                         }}
                         className={cn(
                           "text-xs font-medium transition-colors",
@@ -1757,7 +2158,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
       e.preventDefault();
       if (config.dataset) {
         setDatasets(prev => prev.map(ds => ds.id === config.dataset.id ? { ...ds, name, type } : ds));
-        alert('数据集更新成功');
+        showAlert('更新成功', '数据集更新成功');
         onClose();
       } else {
         const newDsId = `DS-${Math.floor(Math.random() * 1000)}`;
@@ -1774,15 +2175,12 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           });
         });
 
-        Promise.all(readFilesPromises).then((readFiles) => {
+        Promise.all(readFilesPromises).then(async (readFiles) => {
           if (readFiles.length > 0) {
             try {
-              const savedRaw = localStorage.getItem('dataset_loaded_files') || '{}';
-              const saved = JSON.parse(savedRaw);
-              saved[newDsId] = readFiles;
-              localStorage.setItem('dataset_loaded_files', JSON.stringify(saved));
+              await saveIndexedDBFile(`dataset_loaded_files_${newDsId}`, readFiles);
             } catch (err) {
-              console.error('Failed to save source files to localStorage due to quota limits:', err);
+              console.error('Failed to save source files to IndexedDB due to limits:', err);
             }
           }
 
@@ -1795,7 +2193,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             dataCount: files.length || Math.floor(Math.random() * 5) + 3
           };
           setDatasets([newDs, ...datasets]);
-          alert(`数据集创建成功，共包含 ${newDs.dataCount} 个文件`);
+          showAlert('创建成功', `数据集创建成功，共包含 ${newDs.dataCount} 个文件`);
           onClose();
         });
       }
@@ -2050,7 +2448,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           setExportHistory(prev => prev.map(r => r.id === newRecord.id ? { ...r, status: 'completed', downloadUrl: url } : r));
         }, 1500);
       });
-      alert('正在导出标注文件...');
+      showAlert('导出开始', '正在导出标注文件...');
       onClose();
     };
 
@@ -2414,6 +2812,68 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   const renderContent = () => {
     return (
       <>
+        {confirmState.open && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-amber-500 font-bold">
+                  <AlertCircle className="w-5 h-5" />
+                  <span>{confirmState.title || '确认提示'}</span>
+                </div>
+              </div>
+              <div className="p-5">
+                <p className="text-sm text-[var(--text-primary)] leading-relaxed">{confirmState.message}</p>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button 
+                    onClick={() => setConfirmState(prev => ({ ...prev, open: false }))}
+                    className="px-4 py-2 border border-[var(--border-color)] rounded-lg text-xs font-medium hover:bg-[var(--bg-primary)] text-[var(--text-secondary)]"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    onClick={() => confirmState.onConfirm()}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium shadow-md shadow-red-500/10"
+                  >
+                    确认删除
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {alertState.open && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-[var(--border-color)] flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-blue-500 font-bold">
+                  <Info className="w-5 h-5" />
+                  <span>{alertState.title || '系统提示'}</span>
+                </div>
+              </div>
+              <div className="p-5">
+                <p className="text-sm text-[var(--text-primary)] leading-relaxed">{alertState.message}</p>
+                <div className="mt-6 flex justify-end">
+                  <button 
+                    onClick={() => setAlertState(prev => ({ ...prev, open: false }))}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium shadow-md"
+                  >
+                    知道啦
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {datasetModalConfig.open && (
           <DatasetModal 
             config={datasetModalConfig}
@@ -2430,15 +2890,13 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
           <ImportModal
             config={importModalConfig}
             onClose={() => setImportModalConfig({ open: false })}
-            onImport={(data) => {
+            onImport={async (data) => {
               const newTaskId = `${importModalConfig.type === 'image' ? 'IMG' : 'VID'}-TASK-${Math.floor(Math.random() * 1000)}`;
               
               // Load any persistent source files uploaded during dataset creation
               let loadedFiles: any[] = [];
               try {
-                const savedRaw = localStorage.getItem('dataset_loaded_files') || '{}';
-                const saved = JSON.parse(savedRaw);
-                loadedFiles = saved[data.datasetId] || [];
+                loadedFiles = await getIndexedDBFile(`dataset_loaded_files_${data.datasetId}`) || [];
               } catch (err) {
                 console.error(err);
               }
@@ -2459,13 +2917,19 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               if (importModalConfig.type === 'image') {
                 setImageTasks([newTask, ...imageTasks]);
                 if (loadedFiles.length > 0) {
-                  const generatedImageFiles = loadedFiles.map((f: any, idx: number) => ({
-                    id: Date.now() + idx + Math.floor(Math.random() * 1000),
-                    taskId: newTaskId,
-                    name: f.name,
-                    status: 'pending',
-                    url: f.url
-                  }));
+                  const generatedImageFiles = loadedFiles.map((f: any, idx: number) => {
+                    const fileId = Date.now() + idx + Math.floor(Math.random() * 1000);
+                    if (f.url) {
+                      saveIndexedDBFile(`file_url_${fileId}`, f.url);
+                    }
+                    return {
+                      id: fileId,
+                      taskId: newTaskId,
+                      name: f.name,
+                      status: 'pending',
+                      url: f.url
+                    };
+                  });
                   setImageFiles((prev: any) => [...prev, ...generatedImageFiles]);
                 } else {
                   const generatedImageFiles = Array.from({ length: computedFileCount }).map((_, idx) => ({
@@ -2479,16 +2943,22 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               } else {
                 setVideoTasks([newTask, ...videoTasks]);
                 if (loadedFiles.length > 0) {
-                  const generatedVideoFiles = loadedFiles.map((f: any, idx: number) => ({
-                    id: Date.now() + idx + Math.floor(Math.random() * 1000),
-                    taskId: newTaskId,
-                    name: f.name,
-                    status: 'pending',
-                    extractStatus: 'pending',
-                    strategy: null,
-                    totalFrames: 0,
-                    url: f.url
-                  }));
+                  const generatedVideoFiles = loadedFiles.map((f: any, idx: number) => {
+                    const fileId = Date.now() + idx + Math.floor(Math.random() * 1000);
+                    if (f.url) {
+                      saveIndexedDBFile(`file_url_${fileId}`, f.url);
+                    }
+                    return {
+                      id: fileId,
+                      taskId: newTaskId,
+                      name: f.name,
+                      status: 'pending',
+                      extractStatus: 'pending',
+                      strategy: null,
+                      totalFrames: 0,
+                      url: f.url
+                    };
+                  });
                   setVideoFiles((prev: any) => [...prev, ...generatedVideoFiles]);
                 } else {
                   const generatedVideoFiles = Array.from({ length: computedFileCount }).map((_, idx) => ({
@@ -2512,7 +2982,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                     : ds
                 ));
               }
-              alert(`成功创建标注任务: ${data.name}`);
+              showAlert('任务创建成功', `成功创建标注任务: ${data.name}`);
             }}
           />
         )}
