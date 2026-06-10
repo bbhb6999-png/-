@@ -269,12 +269,42 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     return raw;
   });
 
-  const [annotations, setAnnotations] = useState<Record<string, Rect[]>>(() => getSavedData(STORAGE_KEYS.ANNOTATIONS, {
-    'img_0': [
-      { id: '1', x: 100, y: 150, width: 200, height: 150, label: '人脸', color: '#3b82f6' },
-      { id: '2', x: 400, y: 300, width: 120, height: 80, label: '车辆', color: '#10b981' },
-    ]
-  }));
+  const [annotations, setAnnotations] = useState<Record<string, Rect[]>>(() => {
+    const defaultAnnotations = {
+      'img_101': [
+        { id: '101-1', x: 100, y: 150, width: 200, height: 150, label: '人脸', color: '#3b82f6' },
+      ],
+      'img_102': [
+        { id: '102-1', x: 200, y: 100, width: 150, height: 180, label: '车辆', color: '#10b981' },
+      ],
+      'img_103': [
+        { id: '103-1', x: 150, y: 220, width: 180, height: 120, label: '车牌', color: '#f59e0b' },
+      ],
+      'img_201': [
+        { id: '201-1', x: 50, y: 80, width: 300, height: 250, label: '车辆', color: '#10b981' },
+      ],
+      'img_202': [
+        { id: '202-1', x: 120, y: 150, width: 220, height: 170, label: '行人', color: '#ef4444' },
+      ],
+      'img_203': [
+        { id: '203-1', x: 180, y: 200, width: 140, height: 110, label: '车牌', color: '#f59e0b' },
+      ],
+      'vid_1_0': [
+        { id: 'vid1-1', x: 100, y: 120, width: 250, height: 180, label: '车辆', color: '#10b981' },
+      ],
+      'vid_4_0': [
+        { id: 'vid4-1', x: 120, y: 140, width: 200, height: 150, label: '车辆', color: '#10b981' },
+      ],
+      'vid_5_0': [
+        { id: 'vid5-1', x: 150, y: 110, width: 220, height: 160, label: '行人', color: '#ef4444' },
+      ]
+    };
+    const saved = getSavedData<Record<string, Rect[]> | null>(STORAGE_KEYS.ANNOTATIONS, null);
+    if (!saved || Object.keys(saved).length === 0) {
+      return defaultAnnotations;
+    }
+    return saved;
+  });
 
   const [labels, setLabels] = useState(() => getSavedData(STORAGE_KEYS.LABELS, [
     { name: '人脸', color: '#3b82f6' },
@@ -406,6 +436,48 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   }, [annotations]);
 
   useEffect(() => {
+    // Automatically sync image file status based on whether it has annotations
+    setImageFiles(prevFiles => {
+      let changed = false;
+      const nextFiles = prevFiles.map(f => {
+        const hasBoxes = annotations[`img_${f.id}`] && annotations[`img_${f.id}`].length > 0;
+        const newStatus = hasBoxes ? 'completed' : 'pending';
+        if (f.status !== newStatus) {
+          changed = true;
+          return { ...f, status: newStatus };
+        }
+        return f;
+      });
+      return changed ? nextFiles : prevFiles;
+    });
+
+    // Automatically sync video file status based on whether any of its frames have annotations
+    setVideoFiles(prevFiles => {
+      let changed = false;
+      const nextFiles = prevFiles.map(f => {
+        let hasAnyBox = false;
+        const total = f.totalFrames || 0;
+        if (total > 0) {
+          for (let idx = 0; idx < total; idx++) {
+            const key = `vid_${f.id}_${idx}`;
+            if (annotations[key] && annotations[key].length > 0) {
+              hasAnyBox = true;
+              break;
+            }
+          }
+        }
+        const newStatus = hasAnyBox ? 'completed' : f.status;
+        if (f.status !== newStatus) {
+          changed = true;
+          return { ...f, status: newStatus };
+        }
+        return f;
+      });
+      return changed ? nextFiles : prevFiles;
+    });
+  }, [annotations]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.LABELS, JSON.stringify(labels));
     } catch (e) {
@@ -428,6 +500,22 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
     if (!selectedItem) return [];
     return videoFiles.filter((f: any) => f.taskId === selectedItem.id);
   }, [videoFiles, selectedItem]);
+
+  const imageEditorStats = React.useMemo(() => {
+    const total = currentImageFiles.length;
+    const completed = currentImageFiles.filter((f: any) => f.status === 'completed').length;
+    const pending = total - completed;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, progress };
+  }, [currentImageFiles]);
+
+  const videoEditorStats = React.useMemo(() => {
+    const total = currentTaskFiles.length;
+    const completed = currentTaskFiles.filter((f: any) => f.status === 'completed').length;
+    const pending = total - completed;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, progress };
+  }, [currentTaskFiles]);
 
   const filteredImageTasks = React.useMemo(() => {
     return imageTasks.filter((task: any) => {
@@ -698,8 +786,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
   }, [imageFiles]);
 
   useEffect(() => {
-    // Reset annotations and index when switching tasks
-    setAnnotations({});
+    // Reset index when switching tasks
     setCurrentImageIndex(0);
     setCurrentFrameIndex(0);
     setSelectedRectId(null);
@@ -1048,9 +1135,18 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
-          <div className="flex items-center px-3 py-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] mr-4">
+          <div className="flex items-center px-3 py-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] mr-2">
             <span className="text-xs font-bold text-blue-500 mr-2">任务:</span>
             <span className="text-xs font-medium truncate max-w-[120px]">{selectedItem?.name}</span>
+          </div>
+          <div className="flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-900/30 mr-2 text-[11px] font-bold text-emerald-600">
+            <span>已标注 {imageEditorStats.completed}</span>
+          </div>
+          <div className="flex items-center px-2.5 py-1 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900/30 mr-2 text-[11px] font-bold text-amber-600">
+            <span>待标注 {imageEditorStats.pending}</span>
+          </div>
+          <div className="flex items-center px-2.5 py-1 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-[var(--border-color)] mr-4 text-[11px] font-medium text-[var(--text-secondary)]">
+            <span>总数 {imageEditorStats.total}</span>
           </div>
           <button 
             onClick={() => setTool('select')}
@@ -1132,13 +1228,6 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
             </button>
           </div>
           <button 
-            onClick={() => setStatsModalConfig({ open: true, task: selectedItem })}
-            className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"
-            title="查看统计"
-          >
-            <BarChart3 className="w-5 h-5" />
-          </button>
-          <button 
             onClick={() => setExportDatasetModalConfig({ 
               open: true, 
               datasets: datasets.filter(ds => ds.taskIds.includes(selectedItem?.id)) 
@@ -1163,7 +1252,7 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
         <div className="w-64 border-r border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
           <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between">
             <h3 id="image-annotation-count-heading" className="text-sm font-bold flex items-center">
-              <ImageIcon className="w-4 h-4 mr-2 text-blue-500" /> 待标注图片 ({currentImageFiles.length})
+              <ImageIcon className="w-4 h-4 mr-2 text-blue-500" /> 待标注图片 ({imageEditorStats.pending})
             </h3>
             <button 
               onClick={() => {
@@ -1536,38 +1625,21 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
-            <div className="flex items-center px-3 py-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] mr-4">
+            <div className="flex items-center px-3 py-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-color)] mr-2">
               <span className="text-xs font-bold text-blue-500 mr-2">视频:</span>
               <span className="text-xs font-medium truncate max-w-[120px]">{selectedVideo?.name}</span>
             </div>
+            <div className="flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-900/30 mr-2 text-[11px] font-bold text-emerald-600">
+              <span>已标注 {videoEditorStats.completed}</span>
+            </div>
+            <div className="flex items-center px-2.5 py-1 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900/30 mr-2 text-[11px] font-bold text-amber-600">
+              <span>待标注 {videoEditorStats.pending}</span>
+            </div>
+            <div className="flex items-center px-2.5 py-1 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-[var(--border-color)] mr-4 text-[11px] font-medium text-[var(--text-secondary)]">
+              <span>总数 {videoEditorStats.total}</span>
+            </div>
             <button className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"><MousePointer2 className="w-5 h-5" /></button>
             <button className="p-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 rounded-lg"><Square className="w-5 h-5" /></button>
-            <button 
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'video/*';
-                input.multiple = true;
-                input.onchange = (e: any) => {
-                  const newFiles = Array.from(e.target.files).map((file: any) => ({
-                    id: Date.now() + Math.random(),
-                    taskId: selectedItem.id,
-                    name: file.name,
-                    status: 'pending',
-                    extractStatus: 'pending',
-                    strategy: null,
-                    totalFrames: 0
-                  }));
-                  setVideoFiles(prev => [...prev, ...newFiles]);
-                  showAlert('导入成功', `成功导入 ${newFiles.length} 个视频，请返回详情页进行抽帧配置`);
-                };
-                input.click();
-              }}
-              className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"
-              title="导入视频"
-            >
-              <Upload className="w-5 h-5" />
-            </button>
             <div className="h-6 w-px bg-[var(--border-color)] mx-2" />
             <span className="text-xs font-medium text-[var(--text-primary)]">帧号: {currentFrameIndex + 1} / {totalFrames}</span>
           </div>
@@ -1581,13 +1653,6 @@ export default function DataAnnotation({ activeSubTab }: DataAnnotationProps) {
                 <Maximize2 className="w-4 h-4" />
               </button>
             </div>
-            <button 
-              onClick={() => setStatsModalConfig({ open: true, task: selectedItem })}
-              className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-[var(--text-secondary)]"
-              title="查看统计"
-            >
-              <BarChart3 className="w-5 h-5" />
-            </button>
             <button 
               onClick={() => setExportDatasetModalConfig({ 
                 open: true, 
